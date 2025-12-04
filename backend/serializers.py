@@ -31,7 +31,7 @@ class LoginSerializer(serializers.Serializer):
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6, max_length=20)
     password_confirm = serializers.CharField(write_only=True)
-    captcha = serializers.CharField(read_only=True,max_length=6,min_length=6)
+    captcha = serializers.CharField(max_length=6,min_length=6)
 
     class Meta:
         model = User

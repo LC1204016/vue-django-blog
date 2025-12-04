@@ -216,9 +216,34 @@ export default {
       }
     }
 
+    const fetchTagsByCategory = async (categoryName) => {
+      if (!categoryName) {
+        availableTags.value = []
+        return
+      }
+      
+      try {
+        const response = await apiService.getTagsByCategory(categoryName)
+        availableTags.value = response.tags || []
+      } catch (error) {
+        console.error('获取分类标签失败:', error)
+        availableTags.value = []
+      }
+    }
+
+    // 监听分类变化
+    watch(() => form.value.category, (newCategory) => {
+      // 清空已选择的标签
+      form.value.tags = []
+      form.value.tag_ids = []
+      
+      // 获取新分类的标签
+      fetchTagsByCategory(newCategory)
+    })
+
     onMounted(() => {
       fetchCategories()
-      fetchTags()
+      // 不在初始化时获取所有标签，而是等待用户选择分类
     })
     
     const handleSubmit = async () => {

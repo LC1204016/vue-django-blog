@@ -103,7 +103,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiService } from '../services/api'
 
@@ -180,6 +180,21 @@ export default {
       }
     }
 
+    const fetchTagsByCategory = async (categoryName) => {
+      if (!categoryName) {
+        availableTags.value = []
+        return
+      }
+      
+      try {
+        const response = await apiService.getTagsByCategory(categoryName)
+        availableTags.value = response.tags || []
+      } catch (error) {
+        console.error('获取分类标签失败:', error)
+        availableTags.value = []
+      }
+    }
+
     const isTagSelected = (tagId) => {
       return form.value.tag_ids.includes(tagId)
     }
@@ -245,11 +260,20 @@ export default {
       }
     }
 
+    // 监听分类变化
+    watch(() => form.value.category, (newCategory) => {
+      // 获取新分类的标签
+      fetchTagsByCategory(newCategory)
+    })
+
     onMounted(async () => {
-      // 先获取标签数据，再获取文章数据，确保标签映射正确
-      await fetchTags()
+      // 先获取分类数据，再获取文章数据
       await fetchCategories()
       await fetchPost()
+      // 根据文章的分类获取对应的标签
+      if (form.value.category) {
+        await fetchTagsByCategory(form.value.category)
+      }
     })
 
     return {

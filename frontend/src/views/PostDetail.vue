@@ -351,7 +351,7 @@ export default {
 
 <style scoped>
 .post-detail {
-  max-width: 800px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
 }
@@ -821,6 +821,10 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .post-detail {
+    padding: 0 15px;
+  }
+  
   .post-header {
     padding: 1.5rem 1.5rem 1rem;
   }
@@ -848,9 +852,12 @@ export default {
     gap: 1rem;
     align-items: flex-start;
   }
-  
-  .comments-section {
-    padding: 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  .post-detail {
+    max-width: 100%;
+    padding: 0 15px;
   }
 }
 </style>

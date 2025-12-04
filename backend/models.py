@@ -32,6 +32,18 @@ class Article(models.Model):
 
 class Tag(models.Model):
     tag = models.CharField(max_length=10, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.tag
+    
+    @property
+    def categories(self):
+        """获取该标签所属的所有分类"""
+        try:
+            return [ct.category for ct in self.category_tags.all()]
+        except:
+            return []
 
 # 点赞情况
 class Like(models.Model):
@@ -61,9 +73,46 @@ class Comment(models.Model):
 # 分类
 class Category(models.Model):
     category = models.CharField(max_length=10, unique=True)
+    description = models.TextField(blank=True, help_text="分类描述")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.category
+    
+    @property
+    def tags(self):
+        """获取该分类下的所有标签"""
+        return [ct.tag for ct in self.category_tags.all()]
+    
+    def add_tag(self, tag_name):
+        """为分类添加标签"""
+        tag, created = Tag.objects.get_or_create(tag=tag_name)
+        CategoryTag.objects.get_or_create(category=self, tag=tag)
+        return tag
+    
+    def remove_tag(self, tag_name):
+        """从分类中移除标签"""
+        try:
+            tag = Tag.objects.get(tag=tag_name)
+            category_tag = CategoryTag.objects.get(category=self, tag=tag)
+            category_tag.delete()
+            return True
+        except (Tag.DoesNotExist, CategoryTag.DoesNotExist):
+            return False
+
+# 分类-标签关联模型
+class CategoryTag(models.Model):
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='category_tags')
+    tag = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name='category_tags')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('category', 'tag')
+        verbose_name = '分类标签'
+        verbose_name_plural = '分类标签'
+
+    def __str__(self):
+        return f"{self.category.category} - {self.tag.tag}"
 
 class Captcha(models.Model):
     captcha = models.CharField(max_length=6)

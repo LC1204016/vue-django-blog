@@ -6,7 +6,7 @@
 
 ### 技术栈
 - **后端**: Python 3.12, Django 5.2.8, Django REST framework, MySQL, django-cors-headers, Pillow
-- **前端**: Vue.js 3.4.0, Vite 5.0.0, Vue Router 4.2.0, Pinia 2.1.0, Axios 1.6.0, ESLint 8.45.0
+- **前端**: Vue.js 3.4.0, Vite 5.0.0, Vue Router 4.2.0, Pinia 2.1.0, Axios 1.6.0, ESLint 8.45.0, eslint-plugin-vue 9.15.0
 - **通信**: RESTful API, CORS, 自定义Token认证
 - **邮件服务**: QQ邮箱SMTP服务（用于验证码发送）
 
@@ -14,7 +14,6 @@
 ```
 D:\dev\blog\
 ├───manage.py              # Django管理脚本
-├───test_email.py          # 邮件测试脚本
 ├───blog\                  # Django项目配置目录
 │   ├───__init__.py
 │   ├───asgi.py           # ASGI配置
@@ -40,7 +39,8 @@ D:\dev\blog\
 │   │   ├───0011_userprofile_profile_pic.py
 │   │   ├───0012_tag_article_tags.py
 │   │   ├───0013_captcha.py
-│   │   └───0014_remove_article_summary.py
+│   │   ├───0014_remove_article_summary.py
+│   │   └───0015_category_tag.py
 │   ├───models.py         # 数据模型
 │   ├───permissions.py    # 权限和认证类
 │   ├───serializers.py    # API序列化器
@@ -49,11 +49,12 @@ D:\dev\blog\
 │   ├───views.py          # API视图
 │   └───management\       # 管理命令
 │       └───commands\     # 自定义命令
-│           ├───create_test_posts.py
-│           └───create_tags.py
+│           ├───create_category_tags.py
+│           └───fix_tag_model.py
 ├───frontend\             # Vue.js前端项目
 │   ├───index.html
 │   ├───package.json
+│   ├───package-lock.json
 │   ├───vite.config.js
 │   └───src\
 │       ├───App.vue
@@ -130,6 +131,16 @@ D:\dev\blog\
 .venv\Scripts\python.exe manage.py create_tags
 ```
 
+#### 创建分类和标签关联数据
+```bash
+.venv\Scripts\python.exe manage.py create_category_tags
+```
+
+#### 修复标签模型（如需要）
+```bash
+.venv\Scripts\python.exe manage.py fix_tag_model
+```
+
 #### 创建测试文章数据
 ```bash
 .venv\Scripts\python.exe manage.py create_test_posts
@@ -187,7 +198,7 @@ npm run lint
 - `GET /api/categories/` - 获取所有分类
 
 ### 标签相关
-- `GET /api/tags/` - 获取所有标签
+- `GET /api/tags/<category>/` - 获取指定分类下的所有标签
 - `POST /api/tags/` - 创建新标签（需要认证）
 
 ### 评论相关
@@ -216,8 +227,9 @@ npm run lint
 
 ### 文章相关
 - `Article` - 文章模型，包含标题、内容、作者、分类、标签、发布时间、更新时间、浏览量、点赞数和踩数
-- `Category` - 文章分类模型
+- `Category` - 文章分类模型，包含分类描述
 - `Tag` - 文章标签模型
+- `CategoryTag` - 分类-标签关联模型，建立分类和标签的多对多关系
 
 ### 互动相关
 - `Like` - 点赞记录模型
@@ -239,6 +251,10 @@ npm run lint
 - 中间件：暂时禁用CSRF，便于API开发
 - 媒体文件：支持用户头像上传，存储在 `media/` 目录
 - 邮件服务：使用QQ邮箱SMTP服务发送验证码
+- 环境变量：邮件配置使用环境变量（DEFAULT_FROM_EMAIL, QQ_EMAIL_HOST_PASSWORD）
+- 解析器：支持JSON、MultiPart和Form解析器
+- 渲染器：使用JSON渲染器
+- 权限类：默认允许所有访问（开发环境）
 
 ### 前端开发约定
 - 构建工具：Vite 5.0.0
@@ -247,12 +263,14 @@ npm run lint
 - HTTP客户端：Axios 1.6.0
 - 状态管理：Pinia 2.1.0
 - 路由：Vue Router 4.2.0
-- 代码规范：ESLint 8.45.0
+- 代码规范：ESLint 8.45.0, eslint-plugin-vue 9.15.0
 - 认证状态：支持"记住我"功能，Token可存储在localStorage或sessionStorage
 - 路由守卫：实现权限控制，需要登录的页面会自动跳转到登录页
 - 分页设置：文章列表默认每页显示12条
 - 请求拦截器：自动添加Token到请求头
 - 响应拦截器：统一处理错误状态码
+- 动态路由：使用动态导入实现路由懒加载（CreatePost.vue, EditPost.vue）
+- 页面标题：通过路由meta自动设置页面标题
 
 ### 安全注意事项
 - 生产环境需要更改`SECRET_KEY`
@@ -324,6 +342,10 @@ npm run lint
 9. 标签管理命令 - 创建初始标签数据的管理命令
 10. 验证码模型 - 完整的验证码存储和验证机制
 11. 文章摘要移除 - 移除了文章摘要字段，简化了文章结构
+12. 分类-标签关联系统 - 实现CategoryTag模型，建立分类和标签的多对多关系
+13. 分类描述功能 - 为Category模型添加描述字段
+14. 分类标签管理命令 - create_category_tags命令创建分类和标签关联关系
+15. 标签模型修复命令 - fix_tag_model命令用于修复标签模型结构
 
 ### 下一步开发建议
 1. 实现用户权限管理（管理员/普通用户）

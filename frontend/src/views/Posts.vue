@@ -22,63 +22,58 @@
         写第一篇文章
       </router-link>
     </div>
-    <div v-else class="posts-grid">
-      <router-link 
+    <div v-else class="articles-list">
+      <div 
         v-for="post in filteredPosts" 
         :key="post.id" 
-        :to="`/posts/${post.id}`" 
-        class="post-card-link"
+        class="article-item"
       >
-        <article class="post-card">
-        <div class="post-header">
-          <h2>{{ post.title }}</h2>
-          <div class="post-meta">
-            <div class="author-info">
-              <div class="author-avatar">
-                <img v-if="post.profile_pic" :src="post.profile_pic.startsWith('http') ? post.profile_pic : `http://localhost:8000${post.profile_pic}`" :alt="post.author" />
-                <span v-else>{{ post.author.charAt(0).toUpperCase() }}</span>
-              </div>
-              <span class="author">作者: {{ post.author }}</span>
+        <div class="article-avatar">
+          <img v-if="post.profile_pic" :src="post.profile_pic.startsWith('http') ? post.profile_pic : `http://localhost:8000${post.profile_pic}`" :alt="post.author" />
+          <span v-else class="avatar-placeholder">{{ post.author.charAt(0).toUpperCase() }}</span>
+        </div>
+        <div class="article-content">
+          <router-link :to="`/posts/${post.id}`" class="article-title">
+            {{ post.title }}
+          </router-link>
+          <p class="article-summary">{{ post.content.substring(0, 120) }}{{ post.content.length > 120 ? '...' : '' }}</p>
+          <div class="article-meta">
+            <span class="author-name">{{ post.author }}</span>
+            <span class="publish-time">{{ formatDateTime(post.pub_time) }}</span>
+            <span v-if="post.updated_time && post.updated_time !== post.pub_time" class="update-time">
+              更新于 {{ formatDateTime(post.updated_time) }}
+            </span>
+          </div>
+          <div class="article-tags">
+            <span class="category-tag">{{ post.category }}</span>
+            <span 
+              v-for="tag in post.tags.slice(0, 3)" 
+              :key="tag" 
+              class="tag-item"
+            >
+              #{{ tag }}
+            </span>
+          </div>
+          <div class="article-interaction">
+            <div class="interaction-item">
+              <span class="icon">💬</span>
+              <span class="count">{{ post.comments_count || 0 }}</span>
             </div>
-            <div class="post-meta-info">
-              <div class="post-category">
-                <span class="category-text">{{ post.category }}</span>
-              </div>
-              <div class="post-dates-inline">
-                <div class="post-date">
-                  <span class="date-text">发布: {{ formatDate(post.pub_time) }}</span>
-                </div>
-                <div v-if="post.updated_time && post.updated_time !== post.pub_time" class="post-updated">
-                  <span class="update-text">更新: {{ formatDate(post.updated_time) }}</span>
-                </div>
-              </div>
+            <div class="interaction-item">
+              <span class="icon">👍</span>
+              <span class="count">{{ post.like_count }}</span>
+            </div>
+            <div class="interaction-item">
+              <span class="icon">👎</span>
+              <span class="count">{{ post.dislike_count }}</span>
+            </div>
+            <div class="interaction-item">
+              <span class="icon">👁️</span>
+              <span class="count">{{ post.views }}</span>
             </div>
           </div>
         </div>
-        <div class="post-content">
-          <p class="post-excerpt">{{ post.content.substring(0, 150) }}{{ post.content.length > 150 ? '...' : '' }}</p>
-        </div>
-        
-        <!-- 标签显示 -->
-        <div v-if="post.tags && post.tags.length > 0" class="post-tags">
-          <span 
-            v-for="tag in post.tags" 
-            :key="tag" 
-            class="tag"
-          >
-            {{ tag }}
-          </span>
-        </div>
-        
-        <div class="post-footer">
-          <div class="post-stats">
-            <span>👁️ {{ post.views }} 次浏览</span>
-            <span>❤️ {{ post.like_count }} 次点赞</span>
-            <span>👎 {{ post.dislike_count }} 次踩</span>
-          </div>
-        </div>
-      </article>
-      </router-link>
+      </div>
     </div>
 
     <div v-if="totalPages > 1" class="pagination">
@@ -134,7 +129,7 @@ export default {
         loading.value = true
         const response = await apiService.getPosts({
           page: currentPage.value,
-          page_size: 12  // 修改为每页显示12个文章
+          page_size: 16  // 修改为每页显示16个文章
         })
         posts.value = response.results || []
         totalPages.value = response.total_pages || 1
@@ -148,6 +143,28 @@ export default {
     const formatDate = (dateString) => {
       const options = { year: 'numeric', month: 'long', day: 'numeric' }
       return new Date(dateString).toLocaleDateString('zh-CN', options)
+    }
+
+    const formatDateTime = (dateString) => {
+      const date = new Date(dateString)
+      const now = new Date()
+      const diff = now - date
+      
+      // 如果是今天
+      if (diff < 24 * 60 * 60 * 1000 && date.getDate() === now.getDate()) {
+        return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+      }
+      
+      // 如果是昨天
+      const yesterday = new Date(now)
+      yesterday.setDate(yesterday.getDate() - 1)
+      if (date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear()) {
+        return '昨天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+      }
+      
+      // 其他情况显示日期
+      return date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) + ' ' + 
+             date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
     }
 
     // 后端已经截断内容，无需前端再次截断
@@ -169,7 +186,8 @@ export default {
       totalPages,
       isLoggedIn,
       filteredPosts,
-      formatDate
+      formatDate,
+      formatDateTime
     }
   }
 }
@@ -177,7 +195,7 @@ export default {
 
 <style scoped>
 .posts {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
 }
@@ -189,11 +207,15 @@ export default {
   margin-bottom: 2rem;
   flex-wrap: wrap;
   gap: 1rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
 }
 
 .posts-header h1 {
-  color: #2c3e50;
+  color: #333;
   margin: 0;
+  font-size: 24px;
+  font-weight: 600;
 }
 
 .posts-actions {
@@ -212,7 +234,7 @@ export default {
 
 .search-input:focus {
   outline: none;
-  border-color: #42b983;
+  border-color: #0066CC;
 }
 
 .btn {
@@ -226,12 +248,12 @@ export default {
 }
 
 .btn-primary {
-  background-color: #42b983;
+  background-color: #0066CC;
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #369870;
+  background-color: #0055AA;
 }
 
 .btn-secondary {
@@ -249,219 +271,148 @@ export default {
   cursor: not-allowed;
 }
 
-.btn-text {
-  color: #42b983;
-  background: none;
-  padding: 4px 8px;
-}
-
-.btn-text:hover {
-  text-decoration: underline;
-}
-
 .loading, .empty {
   text-align: center;
   padding: 3rem;
   color: #666;
 }
 
-.posts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
+.articles-list {
   margin-bottom: 2rem;
 }
 
-.post-card {
-  border: 1px solid #e1e8ed;
-  border-radius: 12px;
+.article-item {
+  padding: 16px 0;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  gap: 12px;
+}
+
+.article-item:last-child {
+  border-bottom: none;
+}
+
+.article-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
   overflow: hidden;
-  transition: all 0.3s ease;
-  background: linear-gradient(135deg, #f8f9ff 0%, #f5f7fa 100%);
-  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.post-header {
-  padding: 1.5rem 1.5rem 0;
+.article-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.post-header h2 {
-  margin: 0 0 0.5rem;
-  color: #2c3e50;
-  font-size: 1.5rem;
-}
-
-.post-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-}
-
-.author-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.author-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 0.9rem;
-  overflow: hidden;
+  font-size: 16px;
 }
 
-.author-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.article-content {
+  flex: 1;
+  min-width: 0;
 }
 
-.post-meta-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 0.5rem;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.post-card-link {
+.article-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #0066CC;
   text-decoration: none;
-  color: inherit;
   display: block;
+  margin-bottom: 8px;
+  line-height: 1.4;
 }
 
-.post-card-link:hover .post-card {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+.article-title:hover {
+  color: #0055AA;
+  text-decoration: underline;
 }
 
-.post-category {
-  display: inline-flex;
-  align-items: center;
-  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
-  color: white;
-  padding: 0.3rem 0.8rem;
-  border-radius: 16px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  box-shadow: 0 3px 6px rgba(94, 114, 228, 0.3);
-  transition: all 0.3s ease;
+.article-summary {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0 0 8px 0;
 }
 
-.post-category:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(94, 114, 228, 0.4);
-}
-
-.post-dates-inline {
+.article-meta {
   display: flex;
-  gap: 0.5rem;
+  gap: 16px;
   align-items: center;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 
-.post-date, .post-updated {
-  display: inline-block;
-  font-size: 0.75rem;
-  color: #6c757d;
-  background-color: rgba(255, 255, 255, 0.8);
-  padding: 0.3rem 0.6rem;
-  border-radius: 10px;
-  transition: all 0.2s ease;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.post-updated {
-  color: #007bff;
-  background-color: rgba(0, 123, 255, 0.1);
-  border: 1px solid rgba(0, 123, 255, 0.2);
+.author-name {
+  font-size: 13px;
+  color: #333;
   font-weight: 500;
 }
 
-.post-date:hover, .post-updated:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+.publish-time, .update-time {
+  font-size: 13px;
+  color: #999;
 }
 
-.category {
+.update-time {
+  color: #0066CC;
+}
+
+.article-tags {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.category-tag {
   background-color: #e3f2fd;
   color: #1976d2;
-  padding: 0.25rem 0.5rem;
+  padding: 2px 8px;
   border-radius: 12px;
-  font-size: 0.8rem;
+  font-size: 12px;
   font-weight: 500;
 }
 
-.post-content {
-  padding: 0 1.5rem;
-}
-
-.post-excerpt {
+.tag-item {
+  background-color: #f5f5f5;
   color: #666;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.post-tags {
-  padding: 0.75rem 1.5rem 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.post-tags .tag {
-  background-color: #e3f2fd;
-  color: #1976d2;
-  padding: 0.25rem 0.5rem;
+  padding: 2px 8px;
   border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  font-size: 12px;
 }
 
-.post-tags .tag:hover {
-  background-color: #bbdefb;
-  transform: translateY(-1px);
-}
-
-.post-footer {
-  padding: 1rem 1.5rem 1.5rem;
+.article-interaction {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  gap: 16px;
+  align-items: center;
 }
 
-.post-stats {
+.interaction-item {
   display: flex;
-  gap: 1rem;
-  color: #666;
-  font-size: 0.9rem;
+  align-items: center;
+  gap: 4px;
 }
 
-.post-tags {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+.interaction-item .icon {
+  font-size: 14px;
+  color: #999;
 }
 
-.tag {
-  background-color: #e9ecef;
-  color: #495057;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
+.interaction-item .count {
+  font-size: 13px;
+  color: #333;
 }
 
 .pagination {
@@ -470,13 +421,20 @@ export default {
   align-items: center;
   gap: 1rem;
   margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #eee;
 }
 
 .page-info {
   color: #666;
+  font-size: 14px;
 }
 
 @media (max-width: 768px) {
+  .posts {
+    padding: 0 15px;
+  }
+  
   .posts-header {
     flex-direction: column;
     align-items: stretch;
@@ -491,31 +449,33 @@ export default {
     max-width: 200px;
   }
   
-  .posts-grid {
-    grid-template-columns: 1fr;
+  .article-item {
+    padding: 12px 0;
   }
   
-  .post-footer {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
+  .article-title {
+    font-size: 15px;
   }
   
-  .post-meta-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+  .article-summary {
+    font-size: 13px;
   }
   
-  .post-dates-inline {
+  .article-meta {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.25rem;
+    gap: 4px;
   }
   
-  .post-dates {
-    flex-direction: column;
-    gap: 0.25rem;
+  .article-interaction {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .posts {
+    max-width: 100%;
+    padding: 0 15px;
   }
 }
 </style>

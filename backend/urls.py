@@ -16,7 +16,7 @@ urlpatterns = [
     path("dislikes/<int:post_id>/", views.dislikes, name='dislikes'),
     path("getmyposts/", views.get_my_posts, name='get-my-posts'),
     path('edit/<int:post_id>/', views.edit_post, name='edit-post'),
-    path('tags/', views.tags, name='tags'),
+    path('tags/<str:category>/', views.tags, name='tags'),
     path('profile/', views.my_profile, name='my-profile'),
     path("captcha/", views.captcha, name='captcha'),
 ]

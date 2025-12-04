@@ -9,7 +9,7 @@ from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from django.views.decorators.csrf import csrf_exempt
 
 from blog import settings
-from .models import UserProfile, Category, Article, Comment, Like, Dislike, Tag, Captcha
+from .models import UserProfile, Category, Article, Comment, Like, Dislike, Captcha
 from .serializers import UserRegistrationSerializer, LoginSerializer, ArticleSerializer, CommentSerializer, UserProfileSerializer
 
 
@@ -159,7 +159,7 @@ def get_categories(request):
     return Response(category_list)
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_post(request, post_id):
     """
     获取文章
@@ -199,7 +199,7 @@ def get_post(request, post_id):
 def get_posts(request):
     # 获取分页参数
     page = int(request.query_params.get('page', 1))
-    page_size = int(request.query_params.get('page_size', 12))
+    page_size = int(request.query_params.get('page_size', 16))
 
     # 分页查询
     start = (page - 1) * page_size
@@ -217,6 +217,7 @@ def get_posts(request):
         'views': post.views,
         'like_count': post.like_count,
         'dislike_count': post.dislike_count,
+        'comments_count': post.comments.count(),
         'updated_time':post.updated_time,
         'profile_pic': post.author.backend_profile.profile_pic.url if post.author.backend_profile.profile_pic else None,
         'tags': [tag.tag for tag in post.tags.all()],
@@ -330,6 +331,7 @@ def get_my_posts(request):
         'like_count': post.like_count,
         'dislike_count': post.dislike_count,
         'updated_time': post.updated_time,
+        'tags': [tag.tag for tag in post.tags.all()],
     } for post in posts]
 
     # 返回分页信息
@@ -399,35 +401,23 @@ def my_profile(request):
             return Response({}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET','POST'])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def tags(request):
-    if request.method == 'GET':
-        tag_s = Tag.objects.all()
-        tags_list = [
-            {
-                'tag_id':tag.id,
-                'tag':tag.tag,
-            } for tag in tag_s
-        ]
-        return Response({'tags':tags_list}, status=status.HTTP_200_OK)
-    else:
-        tag_name = request.data.get('tag')
-        if not tag_name:
-            return Response({
-                'errors':'标签名称不能为空'
-            }, status.HTTP_400_BAD_REQUEST)
-
-        tag, created = Tag.objects.get_or_create(tag=tag_name)
-        if not created:
-            return Response({
-                'errors':'标签已经存在'
-            }, status.HTTP_400_BAD_REQUEST)
-
+def tags(request, category):
+    try:
+        tag_s = Category.objects.get(category=category).tags
+    except Category.DoesNotExist:
         return Response({
+            "errors":'分类不存在'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    tags_list = [
+        {
             'tag_id':tag.id,
-            'tag': tag.tag,
-        }, status=status.HTTP_200_OK)
+            'tag':tag.tag,
+        } for tag in tag_s
+    ]
+    return Response({'tags':tags_list}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])

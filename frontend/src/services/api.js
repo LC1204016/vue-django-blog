@@ -132,6 +132,10 @@ export const apiService = {
     return api.get('/tags/')
   },
   
+  getTagsByCategory(categoryName) {
+    return api.get(`/tags/${categoryName}/`)
+  },
+  
   createTag(tagName) {
     return api.post('/tags/', { tag: tagName })
   },
