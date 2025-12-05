@@ -3,15 +3,36 @@
     <div class="posts-header">
       <h1>文章列表</h1>
       <div class="posts-actions">
+        <div class="sort-options">
+          <label for="sort-select">排序方式：</label>
+          <select id="sort-select" v-model="selectedSort" @change="handleSortChange" class="sort-select">
+            <option value="">默认排序</option>
+            <option value="-pub_time">发布时间（新到旧）</option>
+            <option value="pub_time">发布时间（旧到新）</option>
+            <option value="-views">浏览量（高到低）</option>
+            <option value="views">浏览量（低到高）</option>
+            <option value="-like_count">点赞数（高到低）</option>
+            <option value="like_count">点赞数（低到高）</option>
+          </select>
+        </div>
+        <div class="category-options">
+          <label for="category-select">文章分类：</label>
+          <select id="category-select" v-model="selectedCategory" @change="handleCategoryChange" class="category-select">
+            <option value="">全部分类</option>
+            <option v-for="category in categories" :key="category.id" :value="category.id">
+              {{ category.name }}
+            </option>
+          </select>
+        </div>
         <input 
           v-model="searchQuery" 
           type="text" 
           placeholder="搜索文章..." 
           class="search-input"
         />
-        <router-link v-if="isLoggedIn" to="/posts/create" class="btn btn-primary">
-          写文章
-        </router-link>
+        <button @click="handleSearch" class="btn btn-secondary">
+          确定
+        </button>
       </div>
     </div>
 
@@ -111,6 +132,9 @@ export default {
     const searchQuery = ref('')
     const currentPage = ref(1)
     const totalPages = ref(1)
+    const selectedSort = ref('')
+    const selectedCategory = ref('')
+    const categories = ref([])
     const authStore = useAuthStore()
 
     const isLoggedIn = computed(() => authStore.isAuthenticated)
@@ -119,7 +143,7 @@ export default {
       if (!searchQuery.value) return posts.value
       return posts.value.filter(post => 
         post.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        post.excerpt.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        post.content.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
         post.tags.some(tag => tag.toLowerCase().includes(searchQuery.value.toLowerCase()))
       )
     })
@@ -127,10 +151,27 @@ export default {
     const fetchPosts = async () => {
       try {
         loading.value = true
-        const response = await apiService.getPosts({
+        const params = {
           page: currentPage.value,
           page_size: 16  // 修改为每页显示16个文章
-        })
+        }
+        
+        // 添加搜索关键词 - 只有搜索框输入的内容作为main_keyword
+        if (searchQuery.value) {
+          params.keyword = searchQuery.value
+        }
+        
+        // 添加排序参数 - 固定的排序字段
+        if (selectedSort.value) {
+          params.order_by = selectedSort.value
+        }
+        
+        // 添加分类参数 - 固定的分类ID
+        if (selectedCategory.value) {
+          params.category_id = selectedCategory.value
+        }
+        
+        const response = await apiService.getPosts(params)
         posts.value = response.results || []
         totalPages.value = response.total_pages || 1
       } catch (error) {
@@ -138,6 +179,30 @@ export default {
       } finally {
         loading.value = false
       }
+    }
+
+    const fetchCategories = async () => {
+      try {
+        const response = await apiService.getCategories()
+        categories.value = response || []
+      } catch (error) {
+        console.error('获取分类失败:', error)
+      }
+    }
+
+    const handleSearch = () => {
+      currentPage.value = 1  // 搜索时重置到第一页
+      fetchPosts()
+    }
+
+    const handleSortChange = () => {
+      currentPage.value = 1  // 排序时重置到第一页
+      fetchPosts()
+    }
+
+    const handleCategoryChange = () => {
+      currentPage.value = 1  // 分类切换时重置到第一页
+      fetchPosts()
     }
 
     const formatDate = (dateString) => {
@@ -169,12 +234,13 @@ export default {
 
     // 后端已经截断内容，无需前端再次截断
 
-    // 监听搜索和页码变化
-    watch([searchQuery, currentPage], () => {
+    // 只监听页码变化，搜索改为手动触发
+    watch(currentPage, () => {
       fetchPosts()
     })
 
     onMounted(() => {
+      fetchCategories()
       fetchPosts()
     })
 
@@ -184,10 +250,16 @@ export default {
       searchQuery,
       currentPage,
       totalPages,
+      selectedSort,
+      selectedCategory,
+      categories,
       isLoggedIn,
       filteredPosts,
       formatDate,
-      formatDateTime
+      formatDateTime,
+      handleSearch,
+      handleSortChange,
+      handleCategoryChange
     }
   }
 }
@@ -430,6 +502,98 @@ export default {
   font-size: 14px;
 }
 
+.posts-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.sort-options {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sort-options label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sort-select {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  min-width: 160px;
+}
+
+.sort-select:hover {
+  border-color: #42b983;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #42b983;
+  box-shadow: 0 0 0 2px rgba(66, 185, 131, 0.2);
+}
+
+.category-options {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.category-options label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.category-select {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  min-width: 120px;
+}
+
+.category-select:hover {
+  border-color: #42b983;
+}
+
+.category-select:focus {
+  outline: none;
+  border-color: #42b983;
+  box-shadow: 0 0 0 2px rgba(66, 185, 131, 0.2);
+}
+
+.search-input {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 250px;
+  transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #42b983;
+  box-shadow: 0 0 0 2px rgba(66, 185, 131, 0.2);
+}
+
 @media (max-width: 768px) {
   .posts {
     padding: 0 15px;
@@ -441,12 +605,17 @@ export default {
   }
   
   .posts-actions {
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  
+  .sort-options, .category-options {
+    width: 100%;
+    justify-content: center;
   }
   
   .search-input {
-    flex: 1;
-    max-width: 200px;
+    width: 100%;
   }
   
   .article-item {

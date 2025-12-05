@@ -72,6 +72,11 @@ export const apiService = {
   
   // 博客相关API
   getPosts(params = {}) {
+    // 如果有搜索关键词，使用搜索端点
+    if (params.keyword || params.category_id || params.order_by) {
+      return api.get('/searchposts/', { params })
+    }
+    // 否则使用常规文章列表端点
     return api.get('/getposts', { params })
   },
   
@@ -173,6 +178,11 @@ export const apiService = {
   // 获取我的文章
   getMyPosts(params = {}) {
     return api.get('/getmyposts/', { params })
+  },
+  
+  // 获取指定用户详情
+  getUserProfileById(userId) {
+    return api.get(`/profile/${userId}/`)
   }
 }
 

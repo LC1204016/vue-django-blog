@@ -10,11 +10,11 @@
         <h1>{{ post.title }}</h1>
         <div class="post-meta">
           <div class="author-info">
-            <div class="author-avatar">
+            <div class="author-avatar" @click="goToAuthorProfile">
               <img v-if="post.profile_pic" :src="post.profile_pic.startsWith('http') ? post.profile_pic : `http://localhost:8000${post.profile_pic}`" :alt="post.author" />
               <span v-else>{{ post.author.charAt(0).toUpperCase() }}</span>
             </div>
-            <span class="author">作者: {{ post.author }}</span>
+            <span class="author" @click="goToAuthorProfile">作者: {{ post.author }}</span>
           </div>
           <div class="post-dates">
             <span class="date">发布时间: {{ formatDate(post.created_at) }}</span>
@@ -100,7 +100,7 @@
                 <img v-if="comment.profile_pic" :src="comment.profile_pic.startsWith('http') ? comment.profile_pic : `http://localhost:8000${comment.profile_pic}`" :alt="comment.author" />
                 <span v-else>{{ comment.author.charAt(0).toUpperCase() }}</span>
               </div>
-              <span class="comment-author">{{ comment.author }}</span>
+              <span class="comment-author" @click="goToUserProfile(comment.author_id)">{{ comment.author }}</span>
             </div>
             <span class="comment-date">{{ formatDate(comment.created_at || comment.pub_time) }}</span>
           </div>
@@ -288,16 +288,8 @@ export default {
     }
 
     const toggleDislike = async () => {
-      if (!isLoggedIn.value) {
-        alert('请先登录后再点赞')
-        return
-      }
-      
-      if (dislikeLoading.value) return
-      
+      dislikeLoading.value = true
       try {
-        dislikeLoading.value = true
-        
         if (post.value.disliked) {
           await apiService.undislikePost(post.value.id)
           post.value.dislikes--
@@ -322,6 +314,20 @@ export default {
       }
     }
 
+    const goToAuthorProfile = () => {
+      // 获取文章作者的ID并跳转到用户详情页面
+      if (post.value && post.value.author_id) {
+        router.push(`/users/${post.value.author_id}`)
+      }
+    }
+
+    const goToUserProfile = (userId) => {
+      // 跳转到指定用户的详情页面
+      if (userId) {
+        router.push(`/users/${userId}`)
+      }
+    }
+
     onMounted(() => {
       fetchPost()
     })
@@ -343,7 +349,9 @@ export default {
       editPost,
       deletePost,
       toggleLike,
-      toggleDislike
+      toggleDislike,
+      goToAuthorProfile,
+      goToUserProfile
     }
   }
 }
@@ -400,6 +408,18 @@ export default {
   gap: 0.75rem;
 }
 
+.author {
+  cursor: pointer;
+  color: #3498db;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.author:hover {
+  color: #2980b9;
+  text-decoration: underline;
+}
+
 .author-avatar {
   width: 40px;
   height: 40px;
@@ -412,6 +432,12 @@ export default {
   font-weight: bold;
   font-size: 1.1rem;
   overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.author-avatar:hover {
+  transform: scale(1.05);
 }
 
 .author-avatar img {
@@ -793,8 +819,15 @@ export default {
 
 .comment-author {
   font-weight: 600;
-  color: #2c3e50;
+  color: #3498db;
   font-size: 1rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.comment-author:hover {
+  color: #2980b9;
+  text-decoration: underline;
 }
 
 .comment-date {

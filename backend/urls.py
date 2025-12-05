@@ -19,4 +19,6 @@ urlpatterns = [
     path('tags/<str:category>/', views.tags, name='tags'),
     path('profile/', views.my_profile, name='my-profile'),
     path("captcha/", views.captcha, name='captcha'),
+    path("profile/<int:user_id>/", views.get_user_profile, name='get-user-profile'),
+    path('searchposts/', views.search_post, name='search-post'),
 ]

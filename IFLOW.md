@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-这是一个基于Vue.js 3和Django 5.2.8的前后端分离博客项目。后端使用Django REST framework提供API，前端使用Vue.js 3 + Vite + Pinia构建用户界面，实现了完整的用户认证、文章发布、编辑、评论互动、点赞功能和文章标签系统。
+这是一个基于Vue.js 3和Django 5.2.8的前后端分离博客项目。后端使用Django REST framework提供API，前端使用Vue.js 3 + Vite + Pinia构建用户界面，实现了完整的用户认证、文章发布、编辑、评论互动、点赞功能和文章标签系统。项目支持用户资料展示、文章作者详情查看等社交功能。
 
 ### 技术栈
 - **后端**: Python 3.12, Django 5.2.8, Django REST framework, MySQL, django-cors-headers, Pillow
@@ -82,7 +82,8 @@ D:\dev\blog\
 │           ├───PostDetail.vue
 │           ├───Posts.vue
 │           ├───Profile.vue
-│           └───Register.vue
+│           ├───Register.vue
+│           └───UserProfile.vue # 用户详情页面
 ├───api\                  # 额外的API应用
 │   ├───__init__.py
 │   ├───admin.py
@@ -189,7 +190,7 @@ npm run lint
 - `POST /api/captcha/` - 发送邮箱验证码
 
 ### 文章相关
-- `GET /api/getposts` - 获取文章列表（支持分页，默认每页12条）
+- `GET /api/getposts` - 获取文章列表（支持分页，默认每页16条）
 - `POST /api/pubposts/` - 创建文章（需要认证）
 - `GET /api/posts/<id>/` - 获取文章详情
 - `GET /api/getmyposts/` - 获取当前用户的文章（需要认证）
@@ -214,6 +215,7 @@ npm run lint
 ### 用户相关
 - `GET /api/profile/` - 获取当前用户资料（需要认证）
 - `PUT /api/profile/` - 更新当前用户资料（需要认证）
+- `GET /api/users/<id>/profile/` - 获取指定用户资料和文章列表（新增）
 
 ### 其他
 - `GET /api/` - API概览
@@ -312,7 +314,7 @@ npm run lint
 
 ### 前端功能
 - Vue.js 3.4.0 + Composition API
-- 完整的路由系统（首页、文章列表、文章详情、登录、注册、个人中心、文章编辑）
+- 完整的路由系统（首页、文章列表、文章详情、登录、注册、个人中心、文章编辑、用户详情）
 - 用户认证状态管理（Pinia）
 - API服务封装
 - 响应式设计
@@ -329,6 +331,7 @@ npm run lint
 - 用户头像上传和显示
 - 邮箱验证码功能
 - 文章标签选择和管理
+- 用户详情页面（展示用户资料和其发布的文章）
 
 ### 已实现的新功能
 1. 文章标签系统 - 完整的标签模型和管理功能，支持多标签关联
@@ -346,6 +349,8 @@ npm run lint
 13. 分类描述功能 - 为Category模型添加描述字段
 14. 分类标签管理命令 - create_category_tags命令创建分类和标签关联关系
 15. 标签模型修复命令 - fix_tag_model命令用于修复标签模型结构
+16. 用户详情页面 - 新增UserProfile.vue组件，展示用户资料和其发布的文章列表
+17. 作者链接功能 - 在文章详情页面添加点击作者名称跳转到用户详情页面的功能
 
 ### 下一步开发建议
 1. 实现用户权限管理（管理员/普通用户）
@@ -363,3 +368,4 @@ npm run lint
 13. 添加消息通知系统
 14. 实现文章导出功能
 15. 添加文章阅读进度记录
+16. 完善用户社交功能（用户互相关注、动态推送）

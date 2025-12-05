@@ -1,6 +1,9 @@
 import string
 import random
+
+from django.contrib.auth.models import User
 from django.core.mail import send_mail
+from django.db.models import Q, Prefetch, Count
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.response import Response
 from rest_framework import status
@@ -159,7 +162,7 @@ def get_categories(request):
     return Response(category_list)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def get_post(request, post_id):
     """
     获取文章
@@ -178,6 +181,7 @@ def get_post(request, post_id):
         disliked = Dislike.objects.filter(article_id=post.id, user_id=request.user.id).exists()
 
     post_dict = {
+        'author_id': post.author.id,
         'title': post.title,
         'content': post.content,
         'pub_time': post.pub_time.isoformat(),
@@ -200,12 +204,19 @@ def get_posts(request):
     # 获取分页参数
     page = int(request.query_params.get('page', 1))
     page_size = int(request.query_params.get('page_size', 16))
+    author_id = request.query_params.get('author_id')
 
     # 分页查询
     start = (page - 1) * page_size
     end = start + page_size
 
-    posts = Article.objects.all()[start:end]
+    # 如果指定了author_id，则获取指定用户的文章
+    if author_id:
+        posts = Article.objects.filter(author_id=author_id)[start:end]
+        total_count = Article.objects.filter(author_id=author_id).count()
+    else:
+        posts = Article.objects.all()[start:end]
+        total_count = Article.objects.count()
 
     post_list = [{
         'id':post.id,
@@ -223,8 +234,6 @@ def get_posts(request):
         'tags': [tag.tag for tag in post.tags.all()],
     } for post in posts]
 
-    # 返回分页信息
-    total_count = Article.objects.count()
     return Response({
         'results': post_list,
         'count': total_count,
@@ -238,6 +247,7 @@ def get_posts(request):
 def get_comments(request, post_id):
     comments = Comment.objects.filter(article_id=post_id)
     comment_dict = [{
+        'author_id':comment.author.id,
         'author': comment.author.username,
         'pub_time': comment.pub_time.isoformat(),
         'content': comment.content,
@@ -446,3 +456,96 @@ def captcha(request):
         return Response({
             'errors':f"发送失败{str(e)}"
         }, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_user_profile(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({
+            "errors":"用户不存在"
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    # 确保用户资料存在，不存在则创建
+    user_detail = {
+        'username': user.username,
+        'profile_pic': user.backend_profile.profile_pic.url if user.backend_profile.profile_pic else None,
+        'introduction': user.backend_profile.introduction if user.backend_profile.introduction else '',
+        'birthday': user.backend_profile.birthday,
+        'created_at': user.backend_profile.created_at,
+    }
+    return Response({'user':user_detail}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def search_post(request):
+    main_keyword = request.query_params.get('keyword')
+    category_id = request.query_params.get('category_id')
+    order_by = request.query_params.get('order_by')
+
+    page = int(request.query_params.get('page', 1))
+    page_size = int(request.query_params.get('page_size', 16))
+
+    start = (page - 1) * page_size
+    end = start + page_size
+    post_s = Article.objects
+
+    if category_id:
+        post_s = post_s.filter(category_id=category_id)
+
+    if main_keyword:
+        query = Q()
+        keywords = main_keyword.split()
+        for word in keywords:
+            query |= Q(title__icontains=word) | Q(content__icontains=word) | Q(author__username__icontains=word) | Q(tags__tag__icontains=word)
+        post_s = post_s.filter(query)
+
+
+    # 使用select_related获取外键关联对象（一对一，一对多）
+    # 使用prefetch_related获取多对多关联对象
+    # 使用annotate预计算评论数量
+    post_s = post_s.select_related(
+        'author',  # 获取作者信息
+        'category',  # 获取分类信息
+        'author__backend_profile'  # 获取作者的个人资料
+    ).prefetch_related(
+        'tags',  # 预加载标签
+        Prefetch('comments', queryset=Comment.objects.only('id'))  # 只加载评论ID用于计数
+    ).annotate(
+        comments_count=Count('comments', distinct=True)  # 预计算评论数
+    ).distinct()  # 由于tags查询可能导致重复，使用distinct去重
+
+    if order_by:
+        post_s = post_s.order_by(order_by)
+
+    total_count = post_s.count()
+    # 先分页，再转换为列表
+    paginated_posts = list(post_s[start:end])
+
+    post_list = [
+        {
+        'id': post.id,
+        'author': post.author.username,
+        'title': post.title,
+        'content': post.content[:150] + '...' if len(post.content) > 150 else post.content,
+        'pub_time': post.pub_time.isoformat(),
+        'category': post.category.category,
+        'views': post.views,
+        'like_count': post.like_count,
+        'dislike_count': post.dislike_count,
+        'comments_count': post.comments_count,
+        'updated_time': post.updated_time.isoformat(),
+        'profile_pic': post.author.backend_profile.profile_pic.url if post.author.backend_profile.profile_pic else None,
+        'tags':[tag.tag for tag in post.tags.all()],
+    } for post in paginated_posts]
+
+    print(post_list)
+
+    return Response({
+        'results': post_list,
+        'count': total_count,
+        'page': page,
+        'page_size': page_size,
+        'total_pages': (total_count + page_size - 1) // page_size,
+    })
