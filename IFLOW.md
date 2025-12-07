@@ -2,12 +2,12 @@
 
 ## 项目概述
 
-这是一个基于Vue.js 3和Django 5.2.8的前后端分离博客项目。后端使用Django REST framework提供API，前端使用Vue.js 3 + Vite + Pinia构建用户界面，实现了完整的用户认证、文章发布、编辑、评论互动、点赞功能和文章标签系统。项目支持用户资料展示、文章作者详情查看等社交功能。
+这是一个基于Vue.js 3和Django 5.2.8的前后端分离博客项目。后端使用Django REST framework提供API，前端使用Vue.js 3 + Vite + Pinia构建用户界面，实现了完整的用户认证、文章发布、编辑、评论互动、点赞功能和文章标签系统。项目支持用户资料展示、文章作者详情查看、文章搜索等社交功能。
 
 ### 技术栈
-- **后端**: Python 3.12, Django 5.2.8, Django REST framework, MySQL, django-cors-headers, Pillow
+- **后端**: Python 3.12, Django 5.2.8, Django REST framework, Django REST framework SimpleJWT, MySQL, django-cors-headers, Pillow
 - **前端**: Vue.js 3.4.0, Vite 5.0.0, Vue Router 4.2.0, Pinia 2.1.0, Axios 1.6.0, ESLint 8.45.0, eslint-plugin-vue 9.15.0
-- **通信**: RESTful API, CORS, 自定义Token认证
+- **通信**: RESTful API, CORS, JWT认证
 - **邮件服务**: QQ邮箱SMTP服务（用于验证码发送）
 
 ### 项目结构
@@ -94,7 +94,6 @@ D:\dev\blog\
 │   └───migrations\
 │       └───__init__.py
 ├───media\                # 媒体文件目录
-│   ├───default.png       # 默认头像
 │   └───profile_pics\     # 用户头像目录
 ├───templates\            # Django模板目录（当前为空）
 ├───.venv\               # Python虚拟环境
@@ -127,11 +126,6 @@ D:\dev\blog\
 .venv\Scripts\python.exe manage.py createsuperuser
 ```
 
-#### 创建初始标签数据
-```bash
-.venv\Scripts\python.exe manage.py create_tags
-```
-
 #### 创建分类和标签关联数据
 ```bash
 .venv\Scripts\python.exe manage.py create_category_tags
@@ -140,11 +134,6 @@ D:\dev\blog\
 #### 修复标签模型（如需要）
 ```bash
 .venv\Scripts\python.exe manage.py fix_tag_model
-```
-
-#### 创建测试文章数据
-```bash
-.venv\Scripts\python.exe manage.py create_test_posts
 ```
 
 #### 启动Django开发服务器
@@ -188,6 +177,7 @@ npm run lint
 - `POST /api/auth/login/` - 用户登录
 - `POST /api/auth/register/` - 用户注册
 - `POST /api/captcha/` - 发送邮箱验证码
+- `POST /api/token/refresh/` - 刷新JWT令牌
 
 ### 文章相关
 - `GET /api/getposts` - 获取文章列表（支持分页，默认每页16条）
@@ -197,6 +187,7 @@ npm run lint
 - `PUT /api/edit/<post_id>/` - 更新文章（需要认证）
 - `GET /api/edit/<post_id>/` - 获取文章详情用于编辑（需要认证）
 - `GET /api/categories/` - 获取所有分类
+- `GET /api/searchposts/` - 搜索文章（支持关键词、分类和排序）
 
 ### 标签相关
 - `GET /api/tags/<category>/` - 获取指定分类下的所有标签
@@ -215,7 +206,7 @@ npm run lint
 ### 用户相关
 - `GET /api/profile/` - 获取当前用户资料（需要认证）
 - `PUT /api/profile/` - 更新当前用户资料（需要认证）
-- `GET /api/users/<id>/profile/` - 获取指定用户资料和文章列表（新增）
+- `GET /api/profile/<user_id>/` - 获取指定用户资料和文章列表
 
 ### 其他
 - `GET /api/` - API概览
@@ -247,10 +238,11 @@ npm run lint
 - 开发环境：`DEBUG = True`
 - 数据库：MySQL (`blog`)
 - API框架：Django REST framework
+- JWT认证：使用Django REST framework SimpleJWT
+- JWT配置：访问令牌有效期60分钟，刷新令牌有效期7天
 - CORS配置：允许 `http://localhost:8080` 和 `http://127.0.0.1:8080`
-- 认证方式：自定义Token认证（SimpleTokenAuthentication）
 - 自定义认证后端：支持邮箱和用户名登录
-- 中间件：暂时禁用CSRF，便于API开发
+- 中间件：已启用CSRF保护，可在开发环境根据需要调整
 - 媒体文件：支持用户头像上传，存储在 `media/` 目录
 - 邮件服务：使用QQ邮箱SMTP服务发送验证码
 - 环境变量：邮件配置使用环境变量（DEFAULT_FROM_EMAIL, QQ_EMAIL_HOST_PASSWORD）
@@ -268,10 +260,10 @@ npm run lint
 - 代码规范：ESLint 8.45.0, eslint-plugin-vue 9.15.0
 - 认证状态：支持"记住我"功能，Token可存储在localStorage或sessionStorage
 - 路由守卫：实现权限控制，需要登录的页面会自动跳转到登录页
-- 分页设置：文章列表默认每页显示12条
+- 分页设置：文章列表默认每页显示16条
 - 请求拦截器：自动添加Token到请求头
-- 响应拦截器：统一处理错误状态码
-- 动态路由：使用动态导入实现路由懒加载（CreatePost.vue, EditPost.vue）
+- 响应拦截器：统一处理错误状态码和Token自动刷新
+- 动态路由：使用动态导入实现路由懒加载（CreatePost.vue, EditPost.vue, UserProfile.vue）
 - 页面标题：通过路由meta自动设置页面标题
 
 ### 安全注意事项
@@ -304,13 +296,13 @@ npm run lint
 - 自定义认证后端（支持邮箱/用户名登录）
 - CORS支持
 - MySQL数据库集成
-- 简化的Token认证系统
+- JWT认证系统（已配置完整实现）
 - 分页支持
 - 获取用户文章功能
-- 测试数据创建命令
 - 用户头像上传功能
 - 文章更新时间记录
-- 标签管理命令
+- 分类-标签关联管理命令
+- 文章搜索功能（支持关键词、分类和排序）
 
 ### 前端功能
 - Vue.js 3.4.0 + Composition API
@@ -323,7 +315,7 @@ npm run lint
 - 文章发布和编辑界面
 - 请求/响应拦截器
 - 错误处理和状态反馈
-- 文章搜索功能
+- 文章搜索功能（支持关键词、分类和排序）
 - 分页导航
 - 评论展示
 - 点赞/踩交互
@@ -332,6 +324,7 @@ npm run lint
 - 邮箱验证码功能
 - 文章标签选择和管理
 - 用户详情页面（展示用户资料和其发布的文章）
+- JWT令牌自动刷新机制
 
 ### 已实现的新功能
 1. 文章标签系统 - 完整的标签模型和管理功能，支持多标签关联
@@ -340,17 +333,19 @@ npm run lint
 4. 用户头像系统 - 支持用户头像上传和显示，包含默认头像
 5. 文章更新时间记录 - 自动记录文章最后更新时间
 6. 媒体文件管理 - 建立了完整的媒体文件存储结构
-7. 自定义Token认证 - 实现了SimpleTokenAuthentication类
-8. 请求/响应拦截器 - 统一处理API请求和错误
-9. 标签管理命令 - 创建初始标签数据的管理命令
-10. 验证码模型 - 完整的验证码存储和验证机制
-11. 文章摘要移除 - 移除了文章摘要字段，简化了文章结构
-12. 分类-标签关联系统 - 实现CategoryTag模型，建立分类和标签的多对多关系
-13. 分类描述功能 - 为Category模型添加描述字段
-14. 分类标签管理命令 - create_category_tags命令创建分类和标签关联关系
-15. 标签模型修复命令 - fix_tag_model命令用于修复标签模型结构
-16. 用户详情页面 - 新增UserProfile.vue组件，展示用户资料和其发布的文章列表
-17. 作者链接功能 - 在文章详情页面添加点击作者名称跳转到用户详情页面的功能
+7. JWT认证系统 - 完整实现Django REST framework SimpleJWT，包含令牌刷新机制
+8. 请求/响应拦截器 - 统一处理API请求、错误和令牌自动刷新
+9. 验证码模型 - 完整的验证码存储和验证机制
+10. 文章摘要移除 - 移除了文章摘要字段，简化了文章结构
+11. 分类-标签关联系统 - 实现CategoryTag模型，建立分类和标签的多对多关系
+12. 分类描述功能 - 为Category模型添加描述字段
+13. 分类标签管理命令 - create_category_tags命令创建分类和标签关联关系
+14. 标签模型修复命令 - fix_tag_model命令用于修复标签模型结构
+15. 用户详情页面 - 新增UserProfile.vue组件，展示用户资料和其发布的文章列表
+16. 作者链接功能 - 在文章详情页面添加点击作者名称跳转到用户详情页面的功能
+17. 文章搜索功能 - 实现了基于关键词、分类和排序的文章搜索API，支持多关键词搜索
+18. CSRF保护 - 已启用CSRF中间件，增强安全性
+19. 令牌自动刷新 - 前端实现JWT令牌自动刷新机制，提升用户体验
 
 ### 下一步开发建议
 1. 实现用户权限管理（管理员/普通用户）
@@ -358,14 +353,13 @@ npm run lint
 3. 添加网站统计和分析
 4. 部署配置（Docker、Nginx等）
 5. 添加单元测试和集成测试
-6. 实现JWT认证替代简化Token
-7. 添加富文本编辑器
-8. 实现文章草稿功能
-9. 添加图片上传功能（到文章内容中）
-10. 实现用户关注系统
-11. 添加文章搜索优化
-12. 实现评论回复功能
-13. 添加消息通知系统
-14. 实现文章导出功能
-15. 添加文章阅读进度记录
-16. 完善用户社交功能（用户互相关注、动态推送）
+6. 添加富文本编辑器
+7. 实现文章草稿功能
+8. 添加图片上传功能（到文章内容中）
+9. 实现用户关注系统
+10. 优化文章搜索功能（添加全文搜索、高亮显示等）
+11. 实现评论回复功能
+12. 添加消息通知系统
+13. 实现文章导出功能
+14. 添加文章阅读进度记录
+15. 完善用户社交功能（用户互相关注、动态推送）

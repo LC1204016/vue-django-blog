@@ -1,8 +1,17 @@
 import axios from 'axios'
 
+// 根据环境变量设置API基础URL
+const getApiBaseURL = () => {
+  // 优先使用环境变量，否则使用默认值
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL
+  }
+  return '/api' // 默认值，适用于生产环境
+}
+
 // 创建axios实例
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: getApiBaseURL(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -12,8 +21,8 @@ const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   config => {
-    // 优先从sessionStorage获取token（不记住我），再从localStorage获取（记住我）
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token')
+    // 优先从sessionStorage获取accessToken（不记住我），再从localStorage获取（记住我）
+    const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -31,14 +40,58 @@ api.interceptors.response.use(
     // 对响应数据做点什么
     return response.data
   },
-  error => {
+  async error => {
     // 对响应错误做点什么
+    const originalRequest = error.config
+    
     if (error.response) {
+      // 如果是401错误且不是刷新令牌的请求，尝试刷新令牌
+      if (error.response.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/token/refresh/')) {
+        originalRequest._retry = true
+        
+        try {
+          // 获取刷新令牌
+          const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken')
+          
+          if (refreshToken) {
+            // 调用刷新令牌API
+            const response = await api.post('/token/refresh/', { refresh: refreshToken })
+            const newAccessToken = response.access
+            
+            // 更新存储的访问令牌
+            if (localStorage.getItem('refreshToken')) {
+              localStorage.setItem('accessToken', newAccessToken)
+            } else {
+              sessionStorage.setItem('accessToken', newAccessToken)
+            }
+            
+            // 更新请求头
+            api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
+            
+            // 重试原始请求
+            return api(originalRequest)
+          }
+        } catch (refreshError) {
+          // 刷新令牌失败，清除所有令牌
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('refreshToken')
+          localStorage.removeItem('user')
+          sessionStorage.removeItem('accessToken')
+          sessionStorage.removeItem('refreshToken')
+          sessionStorage.removeItem('user')
+          
+          // 可以在这里添加路由跳转到登录页的逻辑
+          console.error('刷新令牌失败，需要重新登录')
+          
+          return Promise.reject(refreshError)
+        }
+      }
+      
       switch (error.response.status) {
         case 401:
-          // 未授权，清除token并跳转到登录页
-          localStorage.removeItem('token')
-          // 这里可以添加路由跳转逻辑
+          // 未授权
+          console.error('未授权访问')
           break
         case 403:
           // 权限不足
@@ -100,7 +153,7 @@ export const apiService = {
     return api.delete(`/posts/${id}/`)
   },
   
-  // 用户认证API（待后端实现）
+  // 用户认证API
   login(credentials) {
     return api.post('/auth/login/', credentials)
   },
@@ -111,6 +164,11 @@ export const apiService = {
   
   register(userData) {
     return api.post('/auth/register/', userData)
+  },
+  
+  // 刷新令牌
+  refreshToken(refreshToken) {
+    return api.post('/token/refresh/', { refresh: refreshToken })
   },
   
   getUserProfile() {

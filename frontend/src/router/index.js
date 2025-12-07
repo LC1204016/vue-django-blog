@@ -82,7 +82,8 @@ router.beforeEach((to, from, next) => {
   
   // 检查是否需要登录
   if (to.matched.some(record => record.meta.requiresAuth)) {
-    const token = localStorage.getItem('token')
+    // 检查访问令牌（优先从sessionStorage获取，再从localStorage获取）
+    const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')
     if (!token) {
       next({
         path: '/login',

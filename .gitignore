@@ -54,6 +54,11 @@ frontend/dist/
 .env.test.local
 .env.production.local
 
+# Deployment
+*.bak
+backup_*
+temp_*
+
 # Media files (might be large)
 media/*
 !media/.gitkeep

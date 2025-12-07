@@ -1,5 +1,6 @@
 import string
 import random
+from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
@@ -10,6 +11,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from blog import settings
 from .models import UserProfile, Category, Article, Comment, Like, Dislike, Captcha
@@ -53,11 +55,6 @@ def login(request):
     if serializer.is_valid():
         user = serializer.validated_data['user']
         remember = serializer.validated_data['remember']
-        # 记住我选项
-        if remember:
-            request.session.set_expiry(1209600)
-        else:
-            request.session.set_expiry(0)
 
         # 获取用户头像
         try:
@@ -65,8 +62,12 @@ def login(request):
             profile_pic = profile.profile_pic.url if profile.profile_pic else None
         except UserProfile.DoesNotExist:
             profile_pic = None
-        
-        # 这里可以生成token，暂时简化处理
+
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+
         response_data = {
             'user': {
                 'id': user.id,
@@ -74,7 +75,8 @@ def login(request):
                 'email': user.email,
                 'profile_pic': profile_pic,
             },
-            'token': 'simple-token-' + str(user.id),  # 简化的token，实际项目中应该用JWT
+            'access':access_token, # JWT访问令牌
+            'refresh':refresh_token, # JWT刷新令牌
             'message': '成功登录'
         }
         
@@ -211,12 +213,23 @@ def get_posts(request):
     end = start + page_size
 
     # 如果指定了author_id，则获取指定用户的文章
+    article_queryset = Article.objects.all()
     if author_id:
-        posts = Article.objects.filter(author_id=author_id)[start:end]
-        total_count = Article.objects.filter(author_id=author_id).count()
-    else:
-        posts = Article.objects.all()[start:end]
-        total_count = Article.objects.count()
+        article_queryset = article_queryset.filter(author_id=author_id)
+
+    total_count = article_queryset.count()
+    posts = article_queryset.select_related(
+        'author',
+        'category',
+        'author__backend_profile',
+    ).prefetch_related(
+        'tags',
+        Prefetch('comments', queryset=Comment.objects.only('id'))
+    ).annotate(
+        comment_count=Count('comments', distinct=True),
+    ).distinct()
+
+    posts = posts[start:end]
 
     post_list = [{
         'id':post.id,
@@ -228,8 +241,8 @@ def get_posts(request):
         'views': post.views,
         'like_count': post.like_count,
         'dislike_count': post.dislike_count,
-        'comments_count': post.comments.count(),
-        'updated_time':post.updated_time,
+        'comments_count': post.comment_count,
+        'updated_time':post.updated_time.isoformat(),
         'profile_pic': post.author.backend_profile.profile_pic.url if post.author.backend_profile.profile_pic else None,
         'tags': [tag.tag for tag in post.tags.all()],
     } for post in posts]
@@ -539,8 +552,6 @@ def search_post(request):
         'profile_pic': post.author.backend_profile.profile_pic.url if post.author.backend_profile.profile_pic else None,
         'tags':[tag.tag for tag in post.tags.all()],
     } for post in paginated_posts]
-
-    print(post_list)
 
     return Response({
         'results': post_list,
