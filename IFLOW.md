@@ -6,7 +6,7 @@
 
 ### 技术栈
 - **后端**: Python 3.12, Django 5.2.8, Django REST framework 3.16.1, Django REST framework SimpleJWT 5.5.1, MySQL, django-cors-headers 4.9.0, Pillow 12.0.0, python-dotenv 1.0.1, gunicorn 23.0.0, aiohttp 3.13.2
-- **前端**: Vue.js 3.4.0, Vite 5.0.0, Vue Router 4.2.0, Pinia 2.1.0, Axios 1.6.0, ESLint 8.45.0, eslint-plugin-vue 9.15.0, Vitest 0.34.6, @vitest/ui 0.34.7
+- **前端**: Vue.js 3.4.0, Vite 5.0.0, @vitejs/plugin-vue 5.0.0, Vue Router 4.2.0, Pinia 2.1.0, Axios 1.6.0, ESLint 8.45.0, eslint-plugin-vue 9.15.0, Vitest 0.34.6, @vitest/ui 0.34.7, jsdom 22.1.0
 - **测试**: Django TestCase, REST Framework APITestCase, Vitest, jsdom 22.1.0
 - **通信**: RESTful API, CORS, JWT认证
 - **邮件服务**: QQ邮箱SMTP服务（用于验证码发送）
@@ -429,6 +429,7 @@ supervisorctl -c supervisor.conf status
 - 测试超时：单元测试5分钟超时，压力测试10分钟超时，负载测试15分钟超时
 - 测试文档：完整的测试指南和最佳实践文档（test/TESTING.md）
 - 测试脚本：包含API测试、评论测试、分类检查等多种专项测试脚本
+- 测试目录：所有测试脚本位于 `test/` 目录下
 
 ### 安全注意事项
 - 生产环境需要更改`SECRET_KEY`
