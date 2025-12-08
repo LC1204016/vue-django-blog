@@ -123,34 +123,31 @@ export const apiService = {
     return api.get('/example/')
   },
   
-  // 博客相关API
+  // 博客相关API - RESTful版本
   getPosts(params = {}) {
-    // 如果有搜索关键词，使用搜索端点
-    if (params.keyword || params.category_id || params.order_by) {
-      return api.get('/searchposts/', { params })
-    }
-    // 否则使用常规文章列表端点
-    return api.get('/getposts', { params })
+    // 统一使用/articles/端点，支持搜索、筛选、分页
+    console.log('API调用 - 参数:', params)
+    return api.get('/articles/', { params })
   },
   
   getPost(id) {
-    return api.get(`/posts/${id}/`)
+    return api.get(`/articles/${id}/`)
   },
   
   createPost(data) {
-    return api.post('/pubposts/', data)
+    return api.post('/articles/', data)
   },
   
   updatePost(id, data) {
-    return api.put(`/edit/${id}/`, data)
+    return api.put(`/articles/${id}/`, data)
   },
   
   getPostForEdit(id) {
-    return api.get(`/edit/${id}/`)
+    return api.get(`/articles/${id}/`)
   },
   
   deletePost(id) {
-    return api.post(`/deletepost/${id}/`)
+    return api.delete(`/articles/${id}/`)
   },
   
   // 用户认证API
@@ -166,25 +163,35 @@ export const apiService = {
     return api.post('/auth/register/', userData)
   },
   
+  // 发送验证码
+  sendCaptcha(data) {
+    return api.post('/captcha/', data)
+  },
+  
   // 刷新令牌
   refreshToken(refreshToken) {
     return api.post('/token/refresh/', { refresh: refreshToken })
   },
   
-  getUserProfile() {
-    return api.get('/profile/')
+  // 密码重置
+  resetPassword(data) {
+    return api.put('/password/reset/', data)
+  },
+  
+  getUserProfile(params = {}) {
+    return api.get('/profile/me/', { params })
   },
   
   updateProfile(data) {
     // 如果是FormData，设置正确的Content-Type
     if (data instanceof FormData) {
-      return api.put('/profile/', data, {
+      return api.post('/profile/me/', data, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       })
     }
-    return api.put('/profile/', data)
+    return api.post('/profile/me/', data)
   },
   
   getCategories() {
@@ -203,44 +210,62 @@ export const apiService = {
     return api.post('/tags/', { tag: tagName })
   },
   
-  // 评论相关API
+  // 评论相关API - RESTful版本
   getPostComments(postId) {
-    return api.get(`/comments/${postId}/`)
+    return api.get(`/articles/${postId}/comments/`)
   },
   
   createComment(postId, data) {
-    return api.post(`/pubcomments/${postId}/`, data)
+    return api.post(`/articles/${postId}/comments/`, data)
   },
   
   deleteComment(commentId) {
     return api.delete(`/comments/${commentId}/`)
   },
   
-  // 点赞相关API
+  // 点赞相关API - RESTful版本
   likePost(postId) {
-    return api.post(`/likes/${postId}/`)
+    return api.post(`/articles/${postId}/likes/`)
   },
   
   unlikePost(postId) {
-    return api.delete(`/likes/${postId}/`)
+    return api.delete(`/articles/${postId}/likes/`)
   },
   
   dislikePost(postId) {
-    return api.post(`/dislikes/${postId}/`)
+    return api.post(`/articles/${postId}/dislikes/`)
   },
   
   undislikePost(postId) {
-    return api.delete(`/dislikes/${postId}/`)
+    return api.delete(`/articles/${postId}/dislikes/`)
   },
   
-  // 获取我的文章
+  // 获取我的文章 - RESTful版本
   getMyPosts(params = {}) {
     return api.get('/getmyposts/', { params })
   },
   
-  // 获取指定用户详情
-  getUserProfileById(userId) {
-    return api.get(`/profile/${userId}/`)
+  // 统一的用户资料API
+  getUserProfile(userId = null, params = {}) {
+    // 如果没有userId，获取当前用户资料
+    if (userId === null) {
+      return api.get('/users/profile/', { params })
+    }
+    // 获取指定用户资料
+    return api.get(`/users/${userId}/profile/`, { params })
+  },
+  
+  // 更新用户资料
+  updateProfile(data) {
+    // 如果是FormData，设置正确的Content-Type
+    if (data instanceof FormData) {
+      return api.put('/users/profile/', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+    }
+    return api.put('/users/profile/', data)
   }
 }
 

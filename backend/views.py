@@ -3,41 +3,34 @@
 """
 
 # 导入所有模块化视图
-from .auth_views import login, register, send_captcha
-from .article_views import create_article, get_post, get_posts, get_my_posts, edit_post, delete_post, search_post
-from .comment_views import get_comments, pub_comment
-from .interaction_views import likes, dislikes
-from .profile_views import my_profile, get_user_profile
+from .auth_views import login, register, send_captcha, password_reset
+from .article_views import ArticleDetail, ArticleList
+from .comment_views import Comments
+from .interaction_views import Likes, Dislikes
+from .profile_views import UserProfilesView
 from .category_views import get_categories, tags
 
 # 导出所有视图函数
 __all__ = [
-
     # 认证视图
     'login',
     'register',
     'send_captcha',
+    'password_reset',
     
     # 文章视图
-    'create_article',
-    'get_post',
-    'get_posts',
-    'get_my_posts',
-    'edit_post',
-    'delete_post',
-    'search_post',
-    
+    'ArticleList',
+    'ArticleDetail',
+
     # 评论视图
-    'get_comments',
-    'pub_comment',
-    
+    'Comments',
+
     # 互动视图
-    'likes',
-    'dislikes',
+    'Likes',
+    'Dislikes',
     
     # 用户资料视图
-    'my_profile',
-    'get_user_profile',
+    'UserProfilesView',
     
     # 分类和标签视图
     'get_categories',

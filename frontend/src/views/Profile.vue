@@ -26,7 +26,12 @@
           <form @submit.prevent="updateProfile" class="profile-form">
             <div class="profile-avatar-section">
               <div class="avatar-container">
-                <img v-if="profileForm.profile_pic" :src="profileForm.profile_pic" :alt="profileForm.username" class="profile-avatar" />
+                <img 
+                  v-if="profileForm.profile_pic && profileForm.profile_pic !== ''" 
+                  :src="profileForm.profile_pic.startsWith('http') ? profileForm.profile_pic : `http://localhost:8000${profileForm.profile_pic}`" 
+                  :alt="profileForm.username" 
+                  class="profile-avatar" 
+                />
                 <div v-else class="profile-avatar-placeholder">
                   {{ profileForm.username?.charAt(0)?.toUpperCase() || 'U' }}
                 </div>
@@ -108,15 +113,46 @@
         <!-- 修改密码 -->
         <div v-if="activeTab === 'password'" class="tab-content">
           <h2>修改密码</h2>
-          <form @submit.prevent="changePassword" class="profile-form">
+          <p class="password-info">
+            修改密码需要通过邮箱验证码验证身份。请输入您的邮箱地址并获取验证码。
+          </p>
+          
+          <!-- 邮箱和验证码输入界面 -->
+          <form @submit.prevent="resetPassword" class="profile-form">
             <div class="form-group">
-              <label for="currentPassword">当前密码</label>
+              <label for="email">邮箱地址</label>
               <input 
-                id="currentPassword"
-                v-model="passwordForm.currentPassword" 
-                type="password" 
+                id="email"
+                v-model="captchaForm.email" 
+                type="email" 
+                placeholder="请输入您的邮箱地址"
                 required
               />
+              <small>请输入您注册时使用的邮箱地址</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="captcha">验证码</label>
+              <div class="captcha-input-group">
+                <input 
+                  id="captcha"
+                  v-model="captchaForm.captcha" 
+                  type="text" 
+                  placeholder="请输入6位验证码"
+                  maxlength="6"
+                  required
+                />
+                <button 
+                  type="button"
+                  @click="sendCaptcha"
+                  :disabled="countdown > 0 || captchaLoading || !captchaForm.email"
+                  class="btn btn-secondary"
+                >
+                  {{ captchaLoading ? '发送中...' : (countdown > 0 ? `${countdown}秒后重试` : '获取验证码') }}
+                </button>
+              </div>
+              <small v-if="!captchaForm.email" class="text-muted">请先输入邮箱地址</small>
+              <small v-else-if="countdown > 0" class="text-info">{{ countdown }}秒后可重新发送</small>
             </div>
             
             <div class="form-group">
@@ -125,10 +161,12 @@
                 id="newPassword"
                 v-model="passwordForm.newPassword" 
                 type="password" 
+                placeholder="请输入新密码（6-20位）"
                 required
                 minlength="6"
+                maxlength="20"
               />
-              <small>密码至少6个字符</small>
+              <small>密码长度6-20个字符</small>
             </div>
             
             <div class="form-group">
@@ -137,18 +175,30 @@
                 id="confirmPassword"
                 v-model="passwordForm.confirmPassword" 
                 type="password" 
+                placeholder="请再次输入新密码"
                 required
+                minlength="6"
+                maxlength="20"
               />
-              <small v-if="passwordError" class="form-error">{{ passwordError }}</small>
+              <small v-if="passwordError" class="error-text">{{ passwordError }}</small>
+            </div>
+            
+            <div v-if="successMessage" class="success-message">
+              {{ successMessage }}
+            </div>
+            
+            <div v-if="errorMessage" class="error-message">
+              {{ errorMessage }}
             </div>
             
             <button 
               type="submit" 
               class="btn btn-primary"
-              :disabled="loading || !passwordFormValid"
+              :disabled="loading || !passwordFormValid || !captchaForm.captcha || !captchaSent"
             >
-              {{ loading ? '修改中...' : '修改密码' }}
+              {{ loading ? '重置中...' : '确认修改' }}
             </button>
+            <small v-if="!captchaSent" class="text-muted">请先获取验证码</small>
           </form>
         </div>
 
@@ -190,6 +240,29 @@
                   删除
                 </button>
               </div>
+            </div>
+            
+            <!-- 分页组件 -->
+            <div v-if="pagination.total_pages > 1" class="pagination">
+              <button 
+                @click="changePage(pagination.page - 1)"
+                :disabled="pagination.page <= 1"
+                class="pagination-btn"
+              >
+                上一页
+              </button>
+              
+              <span class="pagination-info">
+                第 {{ pagination.page }} 页，共 {{ pagination.total_pages }} 页
+              </span>
+              
+              <button 
+                @click="changePage(pagination.page + 1)"
+                :disabled="pagination.page >= pagination.total_pages"
+                class="pagination-btn"
+              >
+                下一页
+              </button>
             </div>
           </div>
         </div>
@@ -234,8 +307,17 @@ export default {
     const loading = ref(false)
     const postsLoading = ref(false)
     const success = ref('')
+    const successMessage = ref('')
     const error = ref('')
+    const errorMessage = ref('')
     const myPosts = ref([])
+    const isLoggedIn = computed(() => authStore.isAuthenticated)
+    const pagination = ref({
+      count: 0,
+      page: 1,
+      page_size: 12,
+      total_pages: 0
+    })
 
     const tabs = [
       { key: 'info', label: '个人信息' },
@@ -255,7 +337,6 @@ export default {
     const avatarFile = ref(null)
 
     const passwordForm = ref({
-      currentPassword: '',
       newPassword: '',
       confirmPassword: ''
     })
@@ -269,45 +350,66 @@ export default {
     })
 
     const passwordFormValid = computed(() => {
-      return passwordForm.value.currentPassword &&
-             passwordForm.value.newPassword.length >= 6 &&
+      const isValid = passwordForm.value.newPassword.length >= 6 &&
+             passwordForm.value.newPassword.length <= 20 &&
              passwordForm.value.newPassword === passwordForm.value.confirmPassword
+      
+      console.log('passwordFormValid 重新计算:', {
+        newPassword: passwordForm.value.newPassword,
+        confirmPassword: passwordForm.value.confirmPassword,
+        newPasswordLength: passwordForm.value.newPassword.length,
+        passwordsMatch: passwordForm.value.newPassword === passwordForm.value.confirmPassword,
+        isValid: isValid
+      })
+      
+      return isValid
     })
 
     const fetchProfile = async () => {
       try {
-        const response = await apiService.getUserProfile()
-        console.log('获取到的用户资料数据:', response)
-        
-        // 处理不同的数据结构
-        let profile = response.profile || response
-        
-        profileForm.value = {
-          username: profile.username || '',
-          email: profile.email || '',
-          introduction: profile.introduction || '',
-          birthday: profile.birthday ? new Date(profile.birthday).toISOString().split('T')[0] : '',
-          profile_pic: profile.profile_pic && profile.profile_pic !== 'default.png' ? `http://localhost:8000${profile.profile_pic}` : '',
-          created_at: profile.created_at || ''
+        const response = await apiService.getUserProfile(null)
+        if (response.profile) {
+          profileForm.value = {
+            username: response.profile.username || '',
+            introduction: response.profile.introduction || '',
+            birthday: response.profile.birthday || '',
+            profile_pic: response.profile.profile_pic || '',
+            created_at: response.profile.created_at || ''
+          }
         }
-        
-        console.log('设置后的表单数据:', profileForm.value)
-      } catch (err) {
-        console.error('获取个人信息失败:', err)
-        error.value = '获取个人信息失败，请重试'
+      } catch (error) {
+        console.error('获取用户资料失败:', error)
+        errorMessage.value = '获取用户资料失败'
       }
     }
 
     const fetchMyPosts = async () => {
       try {
         postsLoading.value = true
-        const response = await apiService.getMyPosts()
+        console.log('获取我的文章，页码:', pagination.value.page)
+        const response = await apiService.getUserProfile(null, {
+          page: pagination.value.page,
+          page_size: pagination.value.page_size
+        })
+        console.log('我的文章API响应:', response)
         myPosts.value = response.results || []
-      } catch (err) {
-        console.error('获取我的文章失败:', err)
+        pagination.value = {
+          count: response.count || 0,
+          page: response.page || 1,
+          page_size: response.page_size || 12,
+          total_pages: response.total_pages || 1
+        }
+      } catch (error) {
+        console.error('获取我的文章失败:', error)
+        error.value = '获取我的文章失败'
       } finally {
         postsLoading.value = false
       }
+    }
+
+    const changePage = (page) => {
+      pagination.value.page = page
+      fetchMyPosts()
     }
 
     const handleAvatarChange = (event) => {
@@ -360,12 +462,14 @@ export default {
         
         await apiService.updateProfile(formData)
         success.value = '个人信息更新成功'
+        successMessage.value = '个人信息更新成功'
         
         // 重新获取用户信息以更新显示
         await fetchProfile()
         
         setTimeout(() => {
           success.value = ''
+          successMessage.value = ''
         }, 3000)
       } catch (err) {
         console.error('更新个人信息失败:', err)
@@ -375,31 +479,108 @@ export default {
       }
     }
 
-    const changePassword = async () => {
-      if (!passwordFormValid.value) return
+    // 添加验证码相关的响应式变量
+    const captchaForm = ref({
+      email: '',
+      captcha: ''
+    })
+    const captchaSent = ref(false)
+    const countdown = ref(0)
+    const captchaLoading = ref(false)
+    
+    const sendCaptcha = async () => {
+      if (!captchaForm.value.email) {
+        errorMessage.value = '请先输入邮箱地址'
+        return
+      }
+      
+      // 验证邮箱格式
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(captchaForm.value.email)) {
+        errorMessage.value = '请输入有效的邮箱地址'
+        return
+      }
+      
+      try {
+        captchaLoading.value = true
+        errorMessage.value = ''
+        
+        await apiService.sendCaptcha({ email: captchaForm.value.email })
+        
+        captchaSent.value = true
+        countdown.value = 60
+        const timer = setInterval(() => {
+          countdown.value--
+          if (countdown.value <= 0) {
+            clearInterval(timer)
+          }
+        }, 1000)
+        
+        success.value = '验证码已发送到您的邮箱'
+        successMessage.value = '验证码已发送到您的邮箱'
+        setTimeout(() => {
+          success.value = ''
+          successMessage.value = ''
+        }, 3000)
+      } catch (err) {
+        console.error('发送验证码失败:', err)
+        errorMessage.value = err.response?.data?.errors?.email || '发送验证码失败，请重试'
+      } finally {
+        captchaLoading.value = false
+      }
+    }
+    
+    const resetPassword = async () => {
+      if (!captchaForm.value.captcha || captchaForm.value.captcha.length !== 6) {
+        errorMessage.value = '请输入6位验证码'
+        return
+      }
+      
+      if (!passwordFormValid.value) {
+        errorMessage.value = '请正确填写密码信息'
+        return
+      }
       
       try {
         loading.value = true
-        error.value = ''
+        errorMessage.value = ''
         success.value = ''
         
-        await apiService.changePassword({
-          current_password: passwordForm.value.currentPassword,
-          new_password: passwordForm.value.newPassword
+        await apiService.resetPassword({
+          email: captchaForm.value.email,
+          captcha: captchaForm.value.captcha,
+          password: passwordForm.value.newPassword,
+          password_confirm: passwordForm.value.confirmPassword
         })
         
         success.value = '密码修改成功'
+        successMessage.value = '密码修改成功'
         passwordForm.value = {
-          currentPassword: '',
           newPassword: '',
           confirmPassword: ''
         }
+        captchaForm.value = {
+          email: captchaForm.value.email,
+          captcha: ''
+        }
+        captchaSent.value = false
         
         setTimeout(() => {
           success.value = ''
+          successMessage.value = ''
         }, 3000)
       } catch (err) {
-        error.value = err.message || '密码修改失败，请重试'
+        console.error('密码修改失败:', err)
+        if (err.response?.data?.errors) {
+          const serverErrors = err.response.data.errors
+          if (typeof serverErrors === 'string') {
+            errorMessage.value = serverErrors
+          } else {
+            errorMessage.value = Object.values(serverErrors)[0][0] || '密码修改失败，请重试'
+          }
+        } else {
+          errorMessage.value = err.message || '密码修改失败，请重试'
+        }
       } finally {
         loading.value = false
       }
@@ -411,9 +592,11 @@ export default {
           await apiService.deletePost(post.id)
           myPosts.value = myPosts.value.filter(p => p.id !== post.id)
           success.value = '文章删除成功'
+          successMessage.value = '文章删除成功'
           
           setTimeout(() => {
             success.value = ''
+            successMessage.value = ''
           }, 3000)
         } catch (err) {
           error.value = '删除文章失败，请重试'
@@ -428,6 +611,10 @@ export default {
 
     
     
+    const setActiveTab = (tabKey) => {
+      activeTab.value = tabKey
+    }
+
     const formatDate = (dateString) => {
       if (!dateString) return ''
       const options = { 
@@ -438,39 +625,64 @@ export default {
       return new Date(dateString).toLocaleDateString('zh-CN', options)
     }
 
+    
+
     onMounted(() => {
-      console.log('Profile组件已挂载，开始获取用户资料')
       fetchProfile()
-      if (activeTab.value === 'posts') {
-        fetchMyPosts()
+      fetchMyPosts()
+    })
+    
+    // 监听tab切换，重置密码修改相关状态
+    watch(activeTab, (newTab, oldTab) => {
+      if (oldTab === 'password' && newTab !== 'password') {
+        // 从密码修改标签切换出去时，重置状态
+        captchaForm.value = {
+          email: '',
+          captcha: ''
+        }
+        captchaSent.value = false
+        countdown.value = 0
+        errorMessage.value = ''
+        success.value = ''
+        successMessage.value = ''
       }
     })
 
-    // 监听tab切换
+    // 监听tab切换 - 不再需要单独获取文章，因为fetchProfile已经获取了
     watch(activeTab, (newValue) => {
-      if (newValue === 'posts' && myPosts.value.length === 0) {
-        fetchMyPosts()
-      }
+      // 文章数据已经在fetchProfile中获取，不需要额外请求
     })
 
     return {
-      activeTab,
       tabs,
+      activeTab,
       profileForm,
       passwordForm,
-      loading,
-      postsLoading,
-      success,
-      error,
-      myPosts,
       passwordError,
       passwordFormValid,
+      loading,
+      postsLoading,
+      myPosts,
+      pagination,
+      avatarFile,
+      error,
+      success,
+      successMessage,
+      errorMessage,
+      isLoggedIn,
+      captchaForm,
+      captchaSent,
+      countdown,
+      captchaLoading,
       updateProfile,
-      handleAvatarChange,
-      changePassword,
+      sendCaptcha,
+      resetPassword,
       deletePost,
       handleLogout,
-      formatDate
+      handleAvatarChange,
+      formatDate,
+      setActiveTab,
+      changePage
     }
   }
 }
@@ -761,6 +973,108 @@ export default {
 .logout-content p {
   margin-bottom: 1.5rem;
   color: #666;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e1e8ed;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #42b983;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: #f8f9fa;
+  border-color: #42b983;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #999;
+}
+
+.pagination-info {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.password-info {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  color: #6c757d;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.captcha-section {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.captcha-input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.captcha-input-group input {
+  flex: 1;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.btn-secondary:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.text-muted {
+  color: #6c757d;
+  font-size: 12px;
+  margin-top: 0.25rem;
+}
+
+.text-info {
+  color: #17a2b8;
+  font-size: 12px;
+  margin-top: 0.25rem;
+}
+
+.error-text {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 0.25rem;
 }
 
 .success-message,

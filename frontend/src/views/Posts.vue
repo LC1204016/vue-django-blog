@@ -156,22 +156,24 @@ export default {
           page_size: 16  // 修改为每页显示16个文章
         }
         
-        // 添加搜索关键词 - 只有搜索框输入的内容作为main_keyword
+        // 添加搜索关键词
         if (searchQuery.value) {
-          params.keyword = searchQuery.value
+          params.search = searchQuery.value
         }
         
-        // 添加排序参数 - 固定的排序字段
+        // 添加排序参数
         if (selectedSort.value) {
-          params.order_by = selectedSort.value
+          params.ordering = selectedSort.value
         }
         
-        // 添加分类参数 - 固定的分类ID
+        // 添加分类参数
         if (selectedCategory.value) {
-          params.category_id = selectedCategory.value
+          params.category = selectedCategory.value
         }
         
+        console.log('发送请求参数:', params)
         const response = await apiService.getPosts(params)
+        console.log('API响应:', response)
         posts.value = response.results || []
         totalPages.value = response.total_pages || 1
       } catch (error) {

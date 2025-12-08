@@ -5,7 +5,7 @@
 这是一个基于Vue.js 3和Django 5.2.8的现代化前后端分离博客项目。后端使用Django REST framework提供高性能API，前端使用Vue.js 3 + Vite + Pinia构建响应式用户界面，实现了完整的用户认证系统、文章发布编辑、评论互动、点赞功能和文章标签系统。项目支持用户资料展示、文章作者详情查看、文章搜索等社交功能。已配置JWT认证系统、环境变量管理、Redis缓存、完整测试框架和阿里云部署指南。
 
 ### 技术栈
-- **后端**: Python 3.12, Django 5.2.8, Django REST framework 3.16.1, Django REST framework SimpleJWT 5.5.1, MySQL, django-cors-headers 4.9.0, Pillow 12.0.0, python-dotenv 1.0.1, gunicorn 23.0.0, aiohttp 3.13.2
+- **后端**: Python 3.12, Django 5.2.8, Django REST framework 3.16.1, Django REST framework SimpleJWT 5.5.1, MySQL 8.0, django-cors-headers 4.9.0, Pillow 12.0.0, python-dotenv 1.0.1, gunicorn 23.0.0, aiohttp 3.13.2, asyncio 4.0.0
 - **前端**: Vue.js 3.4.0, Vite 5.0.0, @vitejs/plugin-vue 5.0.0, Vue Router 4.2.0, Pinia 2.1.0, Axios 1.6.0, ESLint 8.45.0, eslint-plugin-vue 9.15.0, Vitest 0.34.6, @vitest/ui 0.34.7, jsdom 22.1.0
 - **测试**: Django TestCase, REST Framework APITestCase, Vitest, jsdom 22.1.0
 - **通信**: RESTful API, CORS, JWT认证
@@ -48,9 +48,14 @@ D:\dev\blog\
 │   ├───permissions.py    # 权限和认证类
 │   ├───serializers.py    # API序列化器
 │   ├───test_framework.py # 后端测试框架
-│   ├───tests.py          # 后端测试文件
 │   ├───urls.py           # API路由配置
-│   ├───views.py          # API视图
+│   ├───views.py          # API视图（模块化视图导入）
+│   ├───article_views.py  # 文章相关视图
+│   ├───auth_views.py     # 认证相关视图
+│   ├───category_views.py # 分类和标签视图
+│   ├───comment_views.py  # 评论相关视图
+│   ├───interaction_views.py # 互动功能视图
+│   ├───profile_views.py  # 用户资料视图
 │   └───management\       # 管理命令
 │       └───commands\     # 自定义命令
 │           ├───create_category_tags.py
@@ -80,7 +85,7 @@ D:\dev\blog\
 │       │   └───posts.js
 │       ├───tests\         # 前端测试目录
 │       │   ├───basic.test.js
-│       │   ├───setup.js
+│       │   └───setup.js
 │       │   └───unit\       # 单元测试
 │       │       ├───auth.test.js
 │       │       └───posts.test.js
@@ -95,7 +100,7 @@ D:\dev\blog\
 │           ├───Posts.vue
 │           ├───Profile.vue
 │           ├───Register.vue
-│           └───UserProfile.vue # 用户详情页面
+│           └───UserProfile.vue # 用户详情页面（支持分页）
 ├───api\                  # 额外的API应用
 │   ├───__init__.py
 │   ├───admin.py
@@ -155,7 +160,7 @@ D:\dev\blog\
    - 日志配置（LOG_LEVEL, LOG_FILE）
 
 ### 数据库配置
-项目使用MySQL数据库，确保已安装MySQL服务并创建`blog`数据库。
+项目使用MySQL 8.0数据库，确保已安装MySQL服务并创建`blog`数据库。
 
 ### 后端运行
 
@@ -229,9 +234,6 @@ python manage.py test backend.test_framework --verbosity=2
 
 # 运行特定测试类
 python manage.py test backend.test_framework.AuthenticationTestCase --verbosity=2
-
-# 运行backend/tests.py中的测试
-python manage.py test backend.tests --verbosity=2
 ```
 
 #### 运行性能测试
@@ -321,23 +323,21 @@ supervisorctl -c supervisor.conf status
 - `POST /api/captcha/` - 发送邮箱验证码
 - `POST /api/token/refresh/` - 刷新JWT令牌
 
-### 文章相关
-- `GET /api/getposts` - 获取文章列表（支持分页，默认每页16条）
-- `POST /api/pubposts/` - 创建文章（需要认证）
-- `GET /api/posts/<id>/` - 获取文章详情
-- `GET /api/getmyposts/` - 获取当前用户的文章（需要认证）
-- `PUT /api/edit/<post_id>/` - 更新文章（需要认证）
-- `GET /api/edit/<post_id>/` - 获取文章详情用于编辑（需要认证）
-- `GET /api/categories/` - 获取所有分类
+### 文章相关（RESTful API）
+- `GET /api/articles/` - 获取文章列表（支持分页，默认每页16条）
+- `POST /api/articles/` - 创建文章（需要认证）
+- `GET /api/articles/<id>/` - 获取文章详情
+- `PUT /api/articles/<id>/` - 更新文章（需要认证）
+- `DELETE /api/articles/<id>/` - 删除文章（需要认证）
 - `GET /api/searchposts/` - 搜索文章（支持关键词、分类和排序）
 
-### 标签相关
+### 分类和标签相关
+- `GET /api/categories/` - 获取所有分类
 - `GET /api/tags/<category>/` - 获取指定分类下的所有标签
-- `POST /api/tags/` - 创建新标签（需要认证）
 
 ### 评论相关
-- `GET /api/comments/<post_id>/` - 获取文章评论
-- `POST /api/pubcomments/<post_id>/` - 发表评论（需要认证）
+- `GET /api/articles/<article_id>/comments/` - 获取文章评论
+- `POST /api/articles/<article_id>/comments/` - 发表评论（需要认证）
 
 ### 互动功能
 - `POST /api/likes/<post_id>/` - 点赞文章（需要认证）
@@ -345,20 +345,16 @@ supervisorctl -c supervisor.conf status
 - `POST /api/dislikes/<post_id>/` - 踩文章（需要认证）
 - `DELETE /api/dislikes/<post_id>/` - 取消踩（需要认证）
 
-### 用户相关
-- `GET /api/profile/` - 获取当前用户资料（需要认证）
-- `PUT /api/profile/` - 更新当前用户资料（需要认证）
-- `GET /api/profile/<user_id>/` - 获取指定用户资料和文章列表
-
-### 其他
-- `GET /api/` - API概览
-- `GET /api/example/` - 示例API端点
+### 用户资料相关
+- `GET /api/profile/me/` - 获取当前用户资料（需要认证）
+- `PUT /api/profile/me/` - 更新当前用户资料（需要认证）
+- `GET /api/profile/other/<user_id>/` - 获取指定用户资料和文章列表
 
 ## 数据模型
 
 ### 用户相关
 - `User` - Django内置用户模型
-- `UserProfile` - 用户扩展资料，包含个人简介、生日和头像
+- `UserProfile` - 用户扩展资料，包含个人简介、生日、头像和注册时间
 
 ### 文章相关
 - `Article` - 文章模型，包含标题、内容、作者、分类、标签、发布时间、更新时间、浏览量、点赞数和踩数
@@ -378,7 +374,7 @@ supervisorctl -c supervisor.conf status
 
 ### 后端设置配置
 - 开发环境：`DEBUG = False`（默认，通过环境变量控制）
-- 数据库：MySQL (`blog`)，配置通过环境变量管理
+- 数据库：MySQL 8.0 (`blog`)，配置通过环境变量管理
 - API框架：Django REST framework
 - JWT认证：使用Django REST framework SimpleJWT
 - JWT配置：访问令牌有效期60分钟，刷新令牌有效期7天
@@ -400,13 +396,13 @@ supervisorctl -c supervisor.conf status
 - 构建工具：Vite 5.0.0，支持开发和生产环境配置，优化构建性能
 - 端口：8080
 - API代理：`/api` 请求代理到 `http://localhost:8000`（开发环境）
-- HTTP客户端：Axios 1.6.0，封装完整的API服务
+- HTTP客户端：Axios 1.6.0，封装完整的API服务，支持JWT自动刷新
 - 状态管理：Pinia 2.1.0，包含auth和posts状态管理
 - 路由：Vue Router 4.2.0，实现动态路由懒加载，支持路由守卫
 - 代码规范：ESLint 8.45.0, eslint-plugin-vue 9.15.0
 - 认证状态：支持"记住我"功能，Token可存储在localStorage或sessionStorage
 - 路由守卫：实现权限控制，需要登录的页面会自动跳转到登录页
-- 分页设置：文章列表默认每页显示16条
+- 分页设置：文章列表默认每页显示16条，用户文章列表支持分页
 - 请求拦截器：自动添加Token到请求头
 - 响应拦截器：统一处理错误状态码和Token自动刷新
 - 动态路由：使用动态导入实现路由懒加载（CreatePost.vue, EditPost.vue, UserProfile.vue）
@@ -417,6 +413,10 @@ supervisorctl -c supervisor.conf status
 - 测试环境：使用jsdom模拟浏览器环境进行测试
 - 别名配置：使用`@`别名指向`src`目录，简化导入路径
 - 路由配置：包含首页、文章列表、文章详情、登录注册、个人中心、用户详情等完整路由
+- **Vite配置**：支持代码分割、懒加载、资源优化和测试集成
+- **构建目标**：ES2015，支持现代浏览器
+- **资源管理**：自动分割CSS和JavaScript资源
+- **API环境配置**：支持通过VITE_API_BASE_URL环境变量配置API基础URL
 
 ### 测试约定
 - 后端测试：使用Django TestCase和REST Framework APITestCase
@@ -478,6 +478,8 @@ supervisorctl -c supervisor.conf status
 - Gunicorn部署配置
 - 完整的测试框架（单元测试、集成测试、性能测试）
 - 异步处理支持（aiohttp, asyncio）
+- **模块化视图架构**：将视图按功能拆分为多个模块化文件
+- **RESTful API设计**：符合REST规范的API端点设计
 
 ### 前端功能
 - Vue.js 3.4.0 + Composition API
@@ -498,12 +500,16 @@ supervisorctl -c supervisor.conf status
 - 用户头像上传和显示
 - 邮箱验证码功能
 - 文章标签选择和管理
-- 用户详情页面（展示用户资料和其发布的文章）
+- 用户详情页面（展示用户资料和其发布的文章，支持分页）
 - JWT令牌自动刷新机制
 - 环境变量配置
 - 前端单元测试框架（Vitest）
 - 测试UI界面支持
 - 路径别名配置（@指向src目录）
+- **Vite构建优化**：支持代码分割、懒加载、资源优化
+- **测试集成**：Vitest测试框架，支持UI测试和监视模式
+- **开发体验**：热重载、代码检查、自动化测试
+- **分页功能**：用户文章列表和个人中心支持分页显示
 
 ### 已实现的新功能
 1. 文章标签系统 - 完整的标签模型和管理功能，支持多标签关联
@@ -534,20 +540,30 @@ supervisorctl -c supervisor.conf status
 26. 前端测试框架 - 集成Vitest测试框架，支持单元测试和UI测试
 27. 测试自动化脚本 - 提供完整的测试运行器和报告生成
 28. 性能测试工具 - 包含压力测试和负载测试脚本，评估系统性能
-29. 测试文档 - 详细的测试指南和最佳实践文档
+29. 测试文档 - 详细的测试指南和最佳实践文档（test/TESTING.md）
 30. 异步处理支持 - 添加aiohttp和asyncio依赖，提供异步处理能力
 31. 前端测试UI - 支持可视化测试界面，提升测试体验
 32. 路径别名配置 - 简化前端导入路径，提高开发效率
 33. 测试分类优化 - 将测试分为单元测试、集成测试、压力测试和负载测试四大类
 34. 测试超时机制 - 为不同类型的测试设置合理的超时时间
 35. 测试报告增强 - 生成JSON和HTML格式的详细测试报告
+36. **后端模块化架构** - 将视图按功能拆分为多个模块化文件，提高代码可维护性
+37. **Vite构建优化** - 支持代码分割、懒加载和Tree Shaking
+38. **API端点优化** - 完整的RESTful API设计，支持文章删除功能
+39. **分页功能增强** - 用户文章列表和个人中心支持分页显示，提升用户体验
+40. **API环境配置** - 前端支持通过环境变量配置API基础URL，提高部署灵活性
 
 ### 项目特色亮点
 - **现代化架构**：采用Vue 3 Composition API和Django 5.2.8最新技术栈
-- **完整测试体系**：包含单元测试、集成测试、性能测试和详细测试文档
+- **完整测试体系**：包含单元测试、集成测试、性能测试和详细测试文档（test/TESTING.md）
 - **高性能优化**：Redis缓存、异步处理、代码分离和Tree Shaking
 - **安全防护**：JWT认证、CSRF保护、环境变量管理和HTTPS支持
 - **开发友好**：热重载、代码检查、自动化测试和详细文档
+- **模块化设计**：后端视图模块化，前端组件化，提高代码复用性和可维护性
+- **API设计**：RESTful API设计，支持JWT认证和令牌自动刷新
+- **前端优化**：Vite构建优化，支持代码分割和懒加载
+- **测试自动化**：完整的测试运行器，支持多种测试类型和报告生成
+- **用户体验**：分页功能、响应式设计和流畅的交互体验
 
 ### 下一步开发建议
 1. 实现用户权限管理（管理员/普通用户）

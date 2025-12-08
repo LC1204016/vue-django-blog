@@ -117,4 +117,4 @@ class CategoryTag(models.Model):
 class Captcha(models.Model):
     captcha = models.CharField(max_length=6)
     email = models.EmailField(unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now=True)

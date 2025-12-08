@@ -4,12 +4,12 @@ from django.core.mail import send_mail
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from blog import settings
 from .models import UserProfile, Captcha
-from .serializers import UserRegistrationSerializer, LoginSerializer
+from .serializers import UserRegistrationSerializer, LoginSerializer, PasswordResetSerializer
 
 
 @api_view(['POST'])
@@ -53,7 +53,6 @@ def login(request):
         'errors': serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
 
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
@@ -94,7 +93,6 @@ def register(request):
             'error': f'服务器内部错误: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def send_captcha(request):
@@ -122,3 +120,25 @@ def send_captcha(request):
         return Response({
             'errors':f"发送失败{str(e)}"
         }, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT'])
+@permission_classes([AllowAny])
+def password_reset(request):
+    serializer = PasswordResetSerializer(data=request.data)
+
+    if serializer.is_valid():
+        user = serializer.save()
+
+        response_data = {
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                },
+                'message': '密码重置成功'
+            }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    return Response({
+        'errors': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)

@@ -266,6 +266,7 @@ export default {
         success.value = '文章发布成功！'
         
         // 获取文章ID并跳转到文章详情页
+        // 处理两种可能的响应格式：{ article: { id: ... } } 或直接 { id: ... }
         const postId = response.article?.id || response.id
         if (postId) {
           setTimeout(() => {
