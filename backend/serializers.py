@@ -15,8 +15,8 @@ class LoginSerializer(serializers.Serializer):
         password = data.get('password')
 
         if email and password:
-            # 使用自定义认证后端，支持邮箱和用户名登录
-            user = authenticate(username=email, password=password)
+            # 使用自定义认证后端，支持邮箱登录
+            user = authenticate(email=email, password=password)
             
             if user:
                 if not user.is_active:
@@ -193,3 +193,38 @@ class UserProfileSerializer(serializers.ModelSerializer):
             if not instance.profile_pic.url.startswith('http'):
                 data['profile_pic'] = f"http://localhost:8000{instance.profile_pic.url}"
         return data
+
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=6, max_length=20)
+    password_confirm = serializers.CharField(write_only=True)
+    captcha = serializers.CharField(max_length=6, min_length=6)
+
+    class Meta:
+        model = User
+        fields = ['email', 'password', 'password_confirm', 'captcha']
+
+    def validate(self, data):
+        if not User.objects.filter(email=data['email']).exists():
+            raise serializers.ValidationError("用户不存在")
+
+        captcha_obj = Captcha.objects.filter(email=data['email']).first()
+        if not captcha_obj or data['captcha'] != captcha_obj.captcha:
+            raise serializers.ValidationError('验证码错误')
+
+        # 检查验证码是否过期（10分钟）
+        if captcha_obj.created_at < timezone.now() - datetime.timedelta(minutes=10):
+            raise serializers.ValidationError('验证码已过期')
+
+        # 验证密码正确
+        if data['password'] != data['password_confirm']:
+            raise serializers.ValidationError('密码不匹配')
+
+        return data
+
+    def create(self, validated_data):
+        user = User.objects.get(email=validated_data['email'])
+        user.set_password(validated_data['password'])
+        user.save()
+
+        return user

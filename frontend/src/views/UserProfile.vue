@@ -1,7 +1,7 @@
 <template>
   <div class="user-profile">
     <div class="profile-header">
-      <h1>用户资料</h1>
+      <h1>{{ isOwnProfile ? '我的资料' : '用户资料' }}</h1>
     </div>
 
     <div v-if="loading" class="loading">
@@ -43,11 +43,13 @@
       </div>
       
       <div class="user-posts">
-        <h3>用户文章</h3>
-        <div v-if="postsLoading" class="loading">
-          加载文章中...
+        <div class="posts-header">
+          <h3>{{ isOwnProfile ? '我的文章' : '用户文章' }}</h3>
+          <router-link v-if="isOwnProfile" to="/posts/create" class="btn btn-primary">
+            写新文章
+          </router-link>
         </div>
-        <div v-else-if="posts.length === 0" class="no-posts">
+        <div v-if="posts.length === 0" class="no-posts">
           该用户暂无发布的文章
         </div>
         <div v-else class="posts-list">
@@ -58,11 +60,34 @@
             @click="goToPost(post.id)"
           >
             <h4 class="post-title">{{ post.title }}</h4>
-            <p class="post-summary">{{ truncateContent(post.content) }}</p>
             <div class="post-meta">
               <span class="post-date">{{ formatDate(post.pub_time) }}</span>
               <span class="post-views">{{ post.views }} 浏览</span>
+              <span class="post-likes">{{ post.like_count }} 点赞</span>
             </div>
+          </div>
+          
+          <!-- 分页组件 -->
+          <div v-if="pagination.total_pages > 1" class="pagination">
+            <button 
+              @click="changePage(pagination.page - 1)"
+              :disabled="pagination.page <= 1"
+              class="pagination-btn"
+            >
+              上一页
+            </button>
+            
+            <span class="pagination-info">
+              第 {{ pagination.page }} 页，共 {{ pagination.total_pages }} 页
+            </span>
+            
+            <button 
+              @click="changePage(pagination.page + 1)"
+              :disabled="pagination.page >= pagination.total_pages"
+              class="pagination-btn"
+            >
+              下一页
+            </button>
           </div>
         </div>
       </div>
@@ -81,37 +106,51 @@ export default {
     const route = useRoute()
     const router = useRouter()
     
-    const user = ref({})
+    const user = ref(null)
     const posts = ref([])
     const loading = ref(true)
-    const postsLoading = ref(false)
-    const error = ref('')
+    const error = ref(null)
+    const currentPage = ref(1)
+    const totalPages = ref(1)
+    const isOwnProfile = ref(false)
+    const pagination = ref({
+      count: 0,
+      page: 1,
+      page_size: 12,
+      total_pages: 0
+    })
     
     const userId = route.params.id
     
     const fetchUserProfile = async () => {
       try {
-        const response = await apiService.getUserProfileById(userId)
-        user.value = response.user
-        await fetchUserPosts()
-      } catch (err) {
-        error.value = '获取用户资料失败'
-        console.error('获取用户资料错误:', err)
+        loading.value = true
+        console.log('获取用户资料，userId:', userId, '页码:', currentPage.value)
+        const response = await apiService.getUserProfile(userId, {
+          page: currentPage.value,
+          page_size: 12
+        })
+        console.log('API响应:', response)
+        user.value = response.profile
+        posts.value = response.results || []
+        totalPages.value = response.total_pages || 1
+        pagination.value = {
+          count: response.count || 0,
+          page: response.page || currentPage.value,
+          page_size: response.page_size || 12,
+          total_pages: response.total_pages || 1
+        }
+        isOwnProfile.value = response.profile.is_owner || false
+        console.log('用户资料设置完成:', user.value)
+      } catch (error) {
+        console.error('获取用户资料失败:', error)
+        if (error.response?.status === 404) {
+          error.value = '用户不存在'
+        } else {
+          error.value = '获取用户资料失败'
+        }
       } finally {
         loading.value = false
-      }
-    }
-    
-    const fetchUserPosts = async () => {
-      postsLoading.value = true
-      try {
-        // 使用author_id参数获取指定用户的文章
-        const response = await apiService.getPosts({ author_id: userId })
-        posts.value = response.results || response
-      } catch (err) {
-        console.error('获取用户文章错误:', err)
-      } finally {
-        postsLoading.value = false
       }
     }
     
@@ -121,13 +160,13 @@ export default {
       return date.toLocaleDateString('zh-CN')
     }
     
-    const truncateContent = (content) => {
-      if (!content) return ''
-      return content.length > 100 ? content.substring(0, 100) + '...' : content
-    }
-    
     const goToPost = (postId) => {
       router.push(`/posts/${postId}`)
+    }
+
+    const changePage = (page) => {
+      currentPage.value = page
+      fetchUserProfile()
     }
     
     onMounted(() => {
@@ -138,11 +177,14 @@ export default {
       user,
       posts,
       loading,
-      postsLoading,
       error,
+      currentPage,
+      totalPages,
+      isOwnProfile,
+      pagination,
       formatDate,
-      truncateContent,
-      goToPost
+      goToPost,
+      changePage
     }
   }
 }
@@ -239,10 +281,18 @@ export default {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
+.posts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .user-posts h3 {
+  margin: 0;
   color: #333;
-  margin-bottom: 20px;
-  font-size: 1.5rem;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .no-posts {
@@ -286,6 +336,42 @@ export default {
   display: flex;
   justify-content: space-between;
   color: #999;
+  font-size: 0.9rem;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #42b983;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: #f8f9fa;
+  border-color: #42b983;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #999;
+}
+
+.pagination-info {
+  color: #666;
   font-size: 0.9rem;
 }
 

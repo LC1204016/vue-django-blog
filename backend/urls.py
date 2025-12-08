@@ -6,29 +6,24 @@ urlpatterns = [
     path('auth/login/', views.login, name='login'),
     path('auth/register/', views.register, name='register'),
     path('captcha/', views.send_captcha, name='send-captcha'),
+    path('password/reset/', views.password_reset, name='password_reset'),
     
     # 文章相关
-    path('pubposts/', views.create_article, name='create-article'),
-    path('getposts/', views.get_posts, name='get-posts'),
-    path('posts/<int:post_id>/', views.get_post, name='get-post'),
-    path('getmyposts/', views.get_my_posts, name='get-my-posts'),
-    path('edit/<int:post_id>/', views.edit_post, name='edit-post'),
-    path('deletepost/<int:post_id>/', views.delete_post, name='delete-post'),
-    path('searchposts/', views.search_post, name='search-post'),
-    
+    path('articles/', views.ArticleList.as_view(), name='articles'),
+    path('articles/<int:pk>/', views.ArticleDetail.as_view(), name='article-detail'),
+
     # 分类和标签相关
     path('categories/', views.get_categories, name='get-categories'),
     path('tags/<str:category>/', views.tags, name='tags'),
     
     # 评论相关
-    path('comments/<int:post_id>/', views.get_comments, name='get-comments'),
-    path('pubcomments/<int:post_id>/', views.pub_comment, name='pub-comment'),
-    
+    path('articles/<int:article_id>/comments/', views.Comments.as_view(), name='Comments'),
+
     # 互动功能
-    path('likes/<int:post_id>/', views.likes, name='likes'),
-    path('dislikes/<int:post_id>/', views.dislikes, name='dislikes'),
+    path('likes/<int:post_id>/', views.Likes.as_view(), name='likes'),
+    path('dislikes/<int:post_id>/', views.Dislikes.as_view(), name='dislikes'),
     
     # 用户资料相关
-    path('profile/', views.my_profile, name='my-profile'),
-    path('profile/<int:user_id>/', views.get_user_profile, name='get-user-profile'),
+    path('users/profile/', views.UserProfilesView.as_view(), name='my-profile'),
+    path('users/<int:user_id>/profile/', views.UserProfilesView.as_view(), name='other-profile'),
 ]

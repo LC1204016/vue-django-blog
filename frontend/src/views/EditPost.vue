@@ -132,14 +132,12 @@ export default {
 
     const fetchPost = async () => {
       try {
-        const response = await apiService.getPostForEdit(postId)
-        const post = response.post
+        const post = await apiService.getPostForEdit(postId)
         
-        // 处理标签数据 - 将标签字符串和ID组合成对象数组
+        // 处理标签数据 - API返回的是标签名称数组，需要转换为对象数组
         const tagNames = post.tags || []
-        const tagIds = post.tag_ids || []
-        const tags = tagNames.map((tagName, index) => ({
-          tag_id: tagIds[index] || null,
+        const tags = tagNames.map(tagName => ({
+          tag_id: null, // 暂时没有标签ID，如果需要可以后续添加
           tag: tagName
         }))
         
@@ -148,7 +146,7 @@ export default {
           category: post.category,
           content: post.content,
           tags: tags,
-          tag_ids: tagIds
+          tag_ids: [] // 暂时为空数组
         }
       } catch (err) {
         error.value = err.response?.data?.errors || '获取文章失败'

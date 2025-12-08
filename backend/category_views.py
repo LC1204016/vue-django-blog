@@ -14,7 +14,7 @@ def get_categories(request):
     if category_list is None:
         categories = Category.objects.all()
         category_list = [{"id": cat.id, 'name': cat.category} for cat in categories]
-        cache.set('category_list', category_list)
+        cache.set('category_list', category_list, 60*24*7)
 
     return Response(category_list, status=status.HTTP_200_OK)
 
