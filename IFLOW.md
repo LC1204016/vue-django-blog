@@ -2,13 +2,16 @@
 
 ## 项目概述
 
-这是一个基于Vue.js 3和Django 5.2.8的前后端分离博客项目。后端使用Django REST framework提供API，前端使用Vue.js 3 + Vite + Pinia构建用户界面，实现了完整的用户认证、文章发布、编辑、评论互动、点赞功能和文章标签系统。项目支持用户资料展示、文章作者详情查看、文章搜索等社交功能。
+这是一个基于Vue.js 3和Django 5.2.8的现代化前后端分离博客项目。后端使用Django REST framework提供高性能API，前端使用Vue.js 3 + Vite + Pinia构建响应式用户界面，实现了完整的用户认证系统、文章发布编辑、评论互动、点赞功能和文章标签系统。项目支持用户资料展示、文章作者详情查看、文章搜索等社交功能。已配置JWT认证系统、环境变量管理、Redis缓存、完整测试框架和阿里云部署指南。
 
 ### 技术栈
-- **后端**: Python 3.12, Django 5.2.8, Django REST framework, Django REST framework SimpleJWT, MySQL, django-cors-headers, Pillow
-- **前端**: Vue.js 3.4.0, Vite 5.0.0, Vue Router 4.2.0, Pinia 2.1.0, Axios 1.6.0, ESLint 8.45.0, eslint-plugin-vue 9.15.0
+- **后端**: Python 3.12, Django 5.2.8, Django REST framework 3.16.1, Django REST framework SimpleJWT 5.5.1, MySQL, django-cors-headers 4.9.0, Pillow 12.0.0, python-dotenv 1.0.1, gunicorn 23.0.0, aiohttp 3.13.2
+- **前端**: Vue.js 3.4.0, Vite 5.0.0, @vitejs/plugin-vue 5.0.0, Vue Router 4.2.0, Pinia 2.1.0, Axios 1.6.0, ESLint 8.45.0, eslint-plugin-vue 9.15.0, Vitest 0.34.6, @vitest/ui 0.34.7, jsdom 22.1.0
+- **测试**: Django TestCase, REST Framework APITestCase, Vitest, jsdom 22.1.0
 - **通信**: RESTful API, CORS, JWT认证
 - **邮件服务**: QQ邮箱SMTP服务（用于验证码发送）
+- **缓存**: Redis缓存支持
+- **部署**: Gunicorn + Nginx + Supervisor，支持阿里云部署
 
 ### 项目结构
 ```
@@ -17,7 +20,7 @@ D:\dev\blog\
 ├───blog\                  # Django项目配置目录
 │   ├───__init__.py
 │   ├───asgi.py           # ASGI配置
-│   ├───settings.py       # 项目设置
+│   ├───settings.py       # 项目设置（支持环境变量）
 │   ├───urls.py           # URL路由配置
 │   └───wsgi.py           # WSGI配置
 ├───backend\              # Django后端API应用
@@ -44,7 +47,8 @@ D:\dev\blog\
 │   ├───models.py         # 数据模型
 │   ├───permissions.py    # 权限和认证类
 │   ├───serializers.py    # API序列化器
-│   ├───tests.py
+│   ├───test_framework.py # 后端测试框架
+│   ├───tests.py          # 后端测试文件
 │   ├───urls.py           # API路由配置
 │   ├───views.py          # API视图
 │   └───management\       # 管理命令
@@ -52,10 +56,12 @@ D:\dev\blog\
 │           ├───create_category_tags.py
 │           └───fix_tag_model.py
 ├───frontend\             # Vue.js前端项目
+│   ├───.env.development  # 开发环境变量
+│   ├───.env.production   # 生产环境变量
 │   ├───index.html
 │   ├───package.json
 │   ├───package-lock.json
-│   ├───vite.config.js
+│   ├───vite.config.js    # Vite配置（支持开发和生产环境）
 │   └───src\
 │       ├───App.vue
 │       ├───main.js
@@ -67,11 +73,17 @@ D:\dev\blog\
 │       ├───router\        # 路由配置
 │       │   └───index.js
 │       ├───services\      # API服务
-│       │   └───api.js
+│       │   └───api.js     # API服务封装（支持JWT自动刷新）
 │       ├───stores\        # Pinia状态管理
 │       │   ├───auth.js
 │       │   ├───index.js
 │       │   └───posts.js
+│       ├───tests\         # 前端测试目录
+│       │   ├───basic.test.js
+│       │   ├───setup.js
+│       │   └───unit\       # 单元测试
+│       │       ├───auth.test.js
+│       │       └───posts.test.js
 │       ├───utils\         # 工具函数
 │       └───views\         # 页面组件
 │           ├───CreatePost.vue
@@ -93,12 +105,30 @@ D:\dev\blog\
 │   ├───views.py
 │   └───migrations\
 │       └───__init__.py
+├───test\                 # 测试和压力测试脚本
+│   ├───load_test.py      # 负载测试
+│   ├───run_tests.py      # 测试运行器
+│   ├───simple_load_test.py
+│   ├───simple_load_test2.py
+│   ├───stress_test.py    # 压力测试
+│   ├───test_connection.py
+│   ├───test_api.py       # API测试
+│   ├───test_comment.py   # 评论测试
+│   ├───check_categories.py
+│   ├───debug_test.py
+│   ├───simple_test.py
+│   └───TESTING.md        # 测试指南文档
 ├───media\                # 媒体文件目录
 │   └───profile_pics\     # 用户头像目录
+├───static\               # 静态文件目录
 ├───templates\            # Django模板目录（当前为空）
 ├───.venv\               # Python虚拟环境
 ├───.idea\               # IDE配置目录
-└───.git\                # Git版本控制
+├───.git\                # Git版本控制
+├───.env.example         # 环境变量示例文件
+├───requirements.txt     # Python依赖列表
+├───gunicorn.conf.py     # Gunicorn配置文件
+├───部署指南.md          # 阿里云部署详细指南
 ```
 
 ## 构建和运行
@@ -109,6 +139,20 @@ D:\dev\blog\
    ```bash
    .venv\Scripts\activate
    ```
+
+### 环境变量配置
+1. 复制环境变量示例文件：
+   ```bash
+   copy .env.example .env
+   ```
+2. 根据实际情况修改`.env`文件中的配置，包括：
+   - Django配置（SECRET_KEY, DEBUG, ALLOWED_HOSTS）
+   - 数据库配置（MYSQL_PASSWORD, DB_NAME, DB_USER, DB_HOST, DB_PORT）
+   - 邮件配置（DEFAULT_FROM_EMAIL, QQ_EMAIL_HOST_PASSWORD）
+   - 安全设置（SECURE_SSL_REDIRECT, SECURE_HSTS_*）
+   - 静态文件和媒体文件路径（STATIC_ROOT, MEDIA_ROOT）
+   - 缓存配置（REDIS_URL）
+   - 日志配置（LOG_LEVEL, LOG_FILE）
 
 ### 数据库配置
 项目使用MySQL数据库，确保已安装MySQL服务并创建`blog`数据库。
@@ -169,6 +213,104 @@ npm run preview
 #### 代码检查
 ```bash
 npm run lint
+```
+
+## 测试
+
+### 后端测试
+
+#### 运行单元测试
+```bash
+# 激活虚拟环境
+.venv\Scripts\activate
+
+# 运行所有后端测试
+python manage.py test backend.test_framework --verbosity=2
+
+# 运行特定测试类
+python manage.py test backend.test_framework.AuthenticationTestCase --verbosity=2
+
+# 运行backend/tests.py中的测试
+python manage.py test backend.tests --verbosity=2
+```
+
+#### 运行性能测试
+```bash
+# 运行压力测试
+python test/stress_test.py
+
+# 运行负载测试
+python test/load_test.py
+
+# 运行简单连接测试
+python test/test_connection.py
+```
+
+### 前端测试
+
+#### 运行单元测试
+```bash
+# 进入前端目录
+cd frontend
+
+# 运行测试
+npm run test
+
+# 运行测试并查看UI界面
+npm run test:ui
+
+# 运行测试并监视文件变化
+npm run test:watch
+```
+
+### 运行完整测试套件
+```bash
+# 运行所有测试
+python test/run_tests.py
+
+# 运行包含压力测试的完整测试
+python test/run_tests.py --include-stress
+
+# 运行包含负载测试的完整测试
+python test/run_tests.py --include-load
+
+# 运行所有测试（包括性能测试）
+python test/run_tests.py --include-stress --include-load
+
+# 只运行单元测试
+python test/run_tests.py --unit-only
+
+# 只运行前端测试
+python test/run_tests.py --frontend-only
+
+# 只运行后端测试
+python test/run_tests.py --backend-only
+```
+
+## 生产环境部署
+
+### 使用Gunicorn运行
+```bash
+# 激活虚拟环境
+.venv\Scripts\activate
+
+# 使用Gunicorn启动
+gunicorn -c gunicorn.conf.py blog.wsgi:application
+```
+
+### 使用Supervisor管理进程
+```bash
+# 安装supervisor
+pip install supervisor
+
+# 创建配置文件
+echo_supervisord_conf > supervisor.conf
+
+# 启动supervisor
+supervisord -c supervisor.conf
+
+# 查看状态
+supervisorctl -c supervisor.conf status
 ```
 
 ## API端点
@@ -235,28 +377,32 @@ npm run lint
 ## 开发约定
 
 ### 后端设置配置
-- 开发环境：`DEBUG = True`
-- 数据库：MySQL (`blog`)
+- 开发环境：`DEBUG = False`（默认，通过环境变量控制）
+- 数据库：MySQL (`blog`)，配置通过环境变量管理
 - API框架：Django REST framework
 - JWT认证：使用Django REST framework SimpleJWT
 - JWT配置：访问令牌有效期60分钟，刷新令牌有效期7天
-- CORS配置：允许 `http://localhost:8080` 和 `http://127.0.0.1:8080`
+- CORS配置：通过环境变量 `CORS_ALLOWED_ORIGINS` 控制，默认允许 `http://localhost:8080` 和 `http://127.0.0.1:8080`
 - 自定义认证后端：支持邮箱和用户名登录
-- 中间件：已启用CSRF保护，可在开发环境根据需要调整
+- 中间件：已启用CSRF保护（`django.middleware.csrf.CsrfViewMiddleware`）
 - 媒体文件：支持用户头像上传，存储在 `media/` 目录
 - 邮件服务：使用QQ邮箱SMTP服务发送验证码
-- 环境变量：邮件配置使用环境变量（DEFAULT_FROM_EMAIL, QQ_EMAIL_HOST_PASSWORD）
+- 环境变量：完整的环境变量管理，支持数据库、邮件、缓存、日志等配置
 - 解析器：支持JSON、MultiPart和Form解析器
 - 渲染器：使用JSON渲染器
 - 权限类：默认允许所有访问（开发环境）
+- 缓存配置：支持Redis缓存，通过 `REDIS_URL` 环境变量配置
+- 日志配置：支持文件和控制台日志输出，通过 `LOG_LEVEL` 和 `LOG_FILE` 环境变量控制
+- 安全设置：生产环境支持HTTPS、HSTS等安全配置，通过环境变量控制
+- 异步支持：添加了aiohttp和asyncio依赖，提供异步处理能力
 
 ### 前端开发约定
-- 构建工具：Vite 5.0.0
+- 构建工具：Vite 5.0.0，支持开发和生产环境配置，优化构建性能
 - 端口：8080
-- API代理：`/api` 请求代理到 `http://localhost:8000`
-- HTTP客户端：Axios 1.6.0
-- 状态管理：Pinia 2.1.0
-- 路由：Vue Router 4.2.0
+- API代理：`/api` 请求代理到 `http://localhost:8000`（开发环境）
+- HTTP客户端：Axios 1.6.0，封装完整的API服务
+- 状态管理：Pinia 2.1.0，包含auth和posts状态管理
+- 路由：Vue Router 4.2.0，实现动态路由懒加载，支持路由守卫
 - 代码规范：ESLint 8.45.0, eslint-plugin-vue 9.15.0
 - 认证状态：支持"记住我"功能，Token可存储在localStorage或sessionStorage
 - 路由守卫：实现权限控制，需要登录的页面会自动跳转到登录页
@@ -265,14 +411,37 @@ npm run lint
 - 响应拦截器：统一处理错误状态码和Token自动刷新
 - 动态路由：使用动态导入实现路由懒加载（CreatePost.vue, EditPost.vue, UserProfile.vue）
 - 页面标题：通过路由meta自动设置页面标题
+- 环境变量：支持开发和生产环境配置（`.env.development`和`.env.production`）
+- 构建优化：生产环境支持代码压缩、资源分离、Tree Shaking等优化
+- 测试框架：使用Vitest进行单元测试，支持测试UI和监视模式
+- 测试环境：使用jsdom模拟浏览器环境进行测试
+- 别名配置：使用`@`别名指向`src`目录，简化导入路径
+- 路由配置：包含首页、文章列表、文章详情、登录注册、个人中心、用户详情等完整路由
+
+### 测试约定
+- 后端测试：使用Django TestCase和REST Framework APITestCase
+- 前端测试：使用Vitest进行单元测试，jsdom作为测试环境
+- 性能测试：包含压力测试和负载测试脚本
+- 测试报告：生成JSON和HTML格式的测试报告
+- 测试覆盖率：支持代码覆盖率分析
+- 测试自动化：提供完整的测试运行器，支持单元测试、集成测试和性能测试
+- 测试分类：分为单元测试、集成测试、压力测试和负载测试四大类
+- 测试超时：单元测试5分钟超时，压力测试10分钟超时，负载测试15分钟超时
+- 测试文档：完整的测试指南和最佳实践文档（test/TESTING.md）
+- 测试脚本：包含API测试、评论测试、分类检查等多种专项测试脚本
+- 测试目录：所有测试脚本位于 `test/` 目录下
 
 ### 安全注意事项
 - 生产环境需要更改`SECRET_KEY`
 - 生产环境需要设置`DEBUG = False`
 - 需要配置`ALLOWED_HOSTS`
 - 生产环境需要限制CORS源
-- 生产环境需要启用CSRF保护
 - 验证码10分钟内有效，防止滥用
+- 生产环境已配置HTTPS、HSTS等安全设置（通过环境变量控制）
+- JWT令牌配置：访问令牌60分钟有效期，刷新令牌7天有效期
+- 数据库连接使用环境变量管理，避免硬编码敏感信息
+- 邮件服务密码通过环境变量配置，不在代码中暴露
+- CSRF保护：已启用CSRF中间件，增强安全性
 
 ### 国际化
 - 语言代码：`zh-hans`（简体中文）
@@ -303,6 +472,12 @@ npm run lint
 - 文章更新时间记录
 - 分类-标签关联管理命令
 - 文章搜索功能（支持关键词、分类和排序）
+- 环境变量管理
+- Redis缓存支持
+- 日志系统
+- Gunicorn部署配置
+- 完整的测试框架（单元测试、集成测试、性能测试）
+- 异步处理支持（aiohttp, asyncio）
 
 ### 前端功能
 - Vue.js 3.4.0 + Composition API
@@ -325,6 +500,10 @@ npm run lint
 - 文章标签选择和管理
 - 用户详情页面（展示用户资料和其发布的文章）
 - JWT令牌自动刷新机制
+- 环境变量配置
+- 前端单元测试框架（Vitest）
+- 测试UI界面支持
+- 路径别名配置（@指向src目录）
 
 ### 已实现的新功能
 1. 文章标签系统 - 完整的标签模型和管理功能，支持多标签关联
@@ -346,20 +525,63 @@ npm run lint
 17. 文章搜索功能 - 实现了基于关键词、分类和排序的文章搜索API，支持多关键词搜索
 18. CSRF保护 - 已启用CSRF中间件，增强安全性
 19. 令牌自动刷新 - 前端实现JWT令牌自动刷新机制，提升用户体验
+20. 环境变量管理 - 支持通过.env文件管理配置，便于开发和生产环境切换
+21. Redis缓存支持 - 配置Redis缓存，提升性能
+22. 日志系统 - 完整的日志配置，支持文件和控制台输出
+23. Gunicorn部署配置 - 优化生产环境部署配置
+24. 阿里云部署指南 - 完整的部署文档，包含安全配置和性能优化
+25. 后端测试框架 - 完整的单元测试、集成测试和性能测试框架
+26. 前端测试框架 - 集成Vitest测试框架，支持单元测试和UI测试
+27. 测试自动化脚本 - 提供完整的测试运行器和报告生成
+28. 性能测试工具 - 包含压力测试和负载测试脚本，评估系统性能
+29. 测试文档 - 详细的测试指南和最佳实践文档
+30. 异步处理支持 - 添加aiohttp和asyncio依赖，提供异步处理能力
+31. 前端测试UI - 支持可视化测试界面，提升测试体验
+32. 路径别名配置 - 简化前端导入路径，提高开发效率
+33. 测试分类优化 - 将测试分为单元测试、集成测试、压力测试和负载测试四大类
+34. 测试超时机制 - 为不同类型的测试设置合理的超时时间
+35. 测试报告增强 - 生成JSON和HTML格式的详细测试报告
+
+### 项目特色亮点
+- **现代化架构**：采用Vue 3 Composition API和Django 5.2.8最新技术栈
+- **完整测试体系**：包含单元测试、集成测试、性能测试和详细测试文档
+- **高性能优化**：Redis缓存、异步处理、代码分离和Tree Shaking
+- **安全防护**：JWT认证、CSRF保护、环境变量管理和HTTPS支持
+- **开发友好**：热重载、代码检查、自动化测试和详细文档
 
 ### 下一步开发建议
 1. 实现用户权限管理（管理员/普通用户）
 2. 添加文章收藏功能
 3. 添加网站统计和分析
-4. 部署配置（Docker、Nginx等）
-5. 添加单元测试和集成测试
-6. 添加富文本编辑器
-7. 实现文章草稿功能
-8. 添加图片上传功能（到文章内容中）
-9. 实现用户关注系统
-10. 优化文章搜索功能（添加全文搜索、高亮显示等）
-11. 实现评论回复功能
-12. 添加消息通知系统
-13. 实现文章导出功能
-14. 添加文章阅读进度记录
-15. 完善用户社交功能（用户互相关注、动态推送）
+4. 添加富文本编辑器
+5. 实现文章草稿功能
+6. 添加图片上传功能（到文章内容中）
+7. 实现用户关注系统
+8. 优化文章搜索功能（添加全文搜索、高亮显示等）
+9. 实现评论回复功能
+10. 添加消息通知系统
+11. 实现文章导出功能
+12. 添加文章阅读进度记录
+13. 完善用户社交功能（用户互相关注、动态推送）
+14. 添加API文档（Swagger/OpenAPI）
+15. 实现数据备份和恢复功能
+16. 添加多语言支持
+17. 实现文章定时发布功能
+18. 添加文章访问统计和热门推荐
+19. 实现邮件订阅功能
+20. 优化前端性能（实现SSR或SSG）
+21. 添加文件上传进度显示
+22. 实现文章版本历史功能
+23. 添加文章分享功能
+24. 实现评论点赞功能
+25. 添加用户活动时间线
+26. 实现文章审核工作流
+27. 优化SEO（Meta标签、结构化数据）
+28. 添加网站地图生成
+29. 实现RSS订阅功能
+30. 增加测试覆盖率，添加更多边界测试和异常处理测试
+31. 实现WebSocket支持，添加实时功能
+32. 添加全文搜索引擎（如Elasticsearch）
+33. 实现分布式部署和负载均衡
+34. 添加容器化支持（Docker, Kubernetes）
+35. 实现微服务架构拆分

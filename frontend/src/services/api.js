@@ -150,7 +150,7 @@ export const apiService = {
   },
   
   deletePost(id) {
-    return api.delete(`/posts/${id}/`)
+    return api.post(`/deletepost/${id}/`)
   },
   
   // 用户认证API
