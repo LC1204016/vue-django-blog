@@ -3,7 +3,6 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
 export default defineConfig(({ mode }) => {
-  // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
   
   return {
@@ -24,7 +23,6 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      // 生产环境构建优化
       target: 'es2015',
       outDir: 'dist',
       assetsDir: 'assets',
@@ -47,13 +45,19 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
-      // 压缩配置
       cssCodeSplit: true,
       cssTarget: 'chrome80',
     },
-    // 环境变量配置
     define: {
       __APP_ENV__: env.APP_ENV,
     },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./src/tests/setup.js']
+    },
+    optimizeDeps: {
+      include: ['vitest']
+    }
   }
 })

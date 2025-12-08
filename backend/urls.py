@@ -14,6 +14,7 @@ urlpatterns = [
     path('categories/', views.get_categories, name='get-category'),
     path('posts/<int:post_id>/', views.get_post, name='get-post'),
     path('getposts/', views.get_posts, name='get-posts'),
+    path('deletepost/<int:post_id>/', views.delete_post, name='delete-post'),
     path('comments/<int:post_id>/', views.get_comments, name='get-comments'),
     path("pubcomments/<int:post_id>/", views.pub_comment, name='pub-comment'),
     path("likes/<int:post_id>/", views.likes, name='likes'),
@@ -22,7 +23,7 @@ urlpatterns = [
     path('edit/<int:post_id>/', views.edit_post, name='edit-post'),
     path('tags/<str:category>/', views.tags, name='tags'),
     path('profile/', views.my_profile, name='my-profile'),
-    path("captcha/", views.captcha, name='captcha'),
+    path("captcha/", views.send_captcha, name='send-captcha'),
     path("profile/<int:user_id>/", views.get_user_profile, name='get-user-profile'),
     path('searchposts/', views.search_post, name='search-post'),
 ]

@@ -1,7 +1,7 @@
 import string
 import random
 from datetime import timedelta
-
+from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.db.models import Q, Prefetch, Count
@@ -54,7 +54,6 @@ def login(request):
     
     if serializer.is_valid():
         user = serializer.validated_data['user']
-        remember = serializer.validated_data['remember']
 
         # 获取用户头像
         try:
@@ -93,14 +92,14 @@ def register(request):
     用户注册视图
     """
     try:
-        print(f"收到注册请求: {request.data}")
+        # print(f"收到注册请求: {request.data}")
         
         serializer = UserRegistrationSerializer(data=request.data)
         
         if serializer.is_valid():
-            print("序列化器验证通过")
+            # print("序列化器验证通过")
             user = serializer.save()
-            print(f"用户创建成功: {user.username}")
+            # print(f"用户创建成功: {user.username}")
             
             # 返回用户信息
             response_data = {
@@ -114,14 +113,14 @@ def register(request):
             
             return Response(response_data, status=status.HTTP_201_CREATED)
         
-        print(f"序列化器验证失败: {serializer.errors}")
+        # print(f"序列化器验证失败: {serializer.errors}")
         # 验证失败，修正这里的错误
         return Response({
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
         
     except Exception as e:
-        print(f"注册过程中发生错误: {str(e)}")
+        # print(f"注册过程中发生错误: {str(e)}")
         return Response({
             'error': f'服务器内部错误: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -159,9 +158,14 @@ def create_article(request):
 
 @api_view(['GET'])
 def get_categories(request):
-    categories = Category.objects.all()
-    category_list = [{"id":cat.id, 'name':cat.category} for cat in categories]
-    return Response(category_list)
+    category_list = cache.get('category_list')
+
+    if category_list is None:
+        categories = Category.objects.all()
+        category_list = [{"id": cat.id, 'name': cat.category} for cat in categories]
+        cache.set('category_list', category_list)
+
+    return Response(category_list, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -345,16 +349,12 @@ def get_my_posts(request):
 
     post_list = [{
         'id':post.id,
-        'author': post.author.username,
         'title':post.title,
-        'content': post.content[:150] + '...' if len(post.content) > 150 else  post.content,
         'pub_time': post.pub_time.isoformat(),
-        'category': post.category.category,
         'views': post.views,
         'like_count': post.like_count,
         'dislike_count': post.dislike_count,
         'updated_time': post.updated_time,
-        'tags': [tag.tag for tag in post.tags.all()],
     } for post in posts]
 
     # 返回分页信息
@@ -424,9 +424,30 @@ def my_profile(request):
             return Response({}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def delete_post(request, post_id):
+    try:
+        post = Article.objects.get(id=post_id)
+    except Article.DoesNotExist:
+        return Response({
+            'errors':'文章不存在'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    post.delete()
+    return Response({
+        'success':True
+    }, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def tags(request, category):
+    cache_key = f'category_tags:{category}'
+
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return Response(cached_data, status=status.HTTP_200_OK)
+
     try:
         tag_s = Category.objects.get(category=category).tags
     except Category.DoesNotExist:
@@ -440,11 +461,15 @@ def tags(request, category):
             'tag':tag.tag,
         } for tag in tag_s
     ]
-    return Response({'tags':tags_list}, status=status.HTTP_200_OK)
+    response_data = {'tags':tags_list}
+
+    cache.set(cache_key, response_data, 60*30)
+
+    return Response(response_data, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def captcha(request):
+def send_captcha(request):
     email = request.data.get('email')
     if not email:
         return Response({

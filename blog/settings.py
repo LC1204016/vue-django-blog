@@ -191,9 +191,14 @@ CORS_ALLOW_CREDENTIALS = True
 
 # 缓存配置
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",  # 这里根据你的Redis配置进行调整
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # 如果Redis设置了密码，需要添加以下内容
+            # "PASSWORD": "your_password",
+        },
     }
 }
 
