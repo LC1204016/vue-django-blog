@@ -150,11 +150,11 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ['content']
 
     def create(self, validated_data):
-        post_id = self.context.get('post_id')
+        article_id = self.context.get('article_id')
         comment_obj = Comment.objects.create(
-            author_id=self.context['request'].user.id,
+            author=self.context['request'].user,
             content=validated_data['content'],
-            article_id=post_id
+            article_id=article_id
         )
 
         return comment_obj

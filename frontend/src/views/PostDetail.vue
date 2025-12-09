@@ -226,7 +226,7 @@ export default {
     const deleteComment = async (commentId) => {
       if (confirm('确定要删除这条评论吗？')) {
         try {
-          await apiService.deleteComment(commentId)
+          await apiService.deleteComment(post.value.id, commentId)
           comments.value = comments.value.filter(c => c.id !== commentId)
           post.value.comments_count--
         } catch (err) {
