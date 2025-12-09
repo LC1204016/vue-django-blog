@@ -2,10 +2,10 @@
 
 ## 项目概述
 
-这是一个基于Vue.js 3和Django 5.2.8的现代化前后端分离博客项目。后端使用Django REST framework提供高性能API，前端使用Vue.js 3 + Vite + Pinia构建响应式用户界面，实现了完整的用户认证系统、文章发布编辑、评论互动、点赞功能和文章标签系统。项目支持用户资料展示、文章作者详情查看、文章搜索等社交功能。已配置JWT认证系统、环境变量管理、Redis缓存、完整测试框架和阿里云部署指南。
+这是一个基于Vue.js 3和Django 5.2.8的现代化前后端分离博客项目。后端使用Django REST framework提供高性能API，前端使用Vue.js 3 + Vite + Pinia构建响应式用户界面，实现了完整的用户认证系统、文章发布编辑、评论互动、点赞功能和文章标签系统。项目支持用户资料展示、文章作者详情查看、文章搜索、忘记密码等社交功能。已配置JWT认证系统、环境变量管理、Redis缓存、完整测试框架和阿里云部署指南。
 
 ### 技术栈
-- **后端**: Python 3.12, Django 5.2.8, Django REST framework 3.16.1, Django REST framework SimpleJWT 5.5.1, MySQL 8.0, django-cors-headers 4.9.0, Pillow 12.0.0, python-dotenv 1.0.1, gunicorn 23.0.0, aiohttp 3.13.2, asyncio 4.0.0
+- **后端**: Python 3.12, Django 5.2.8, Django REST framework 3.16.1, Django REST framework SimpleJWT 5.5.1, MySQL 8.0, django-cors-headers 4.9.0, Pillow 12.0.0, python-dotenv 1.0.1, gunicorn 23.0.0, aiohttp 3.13.2, asyncio 4.0.0, mysqlclient 2.2.7, PyJWT 2.10.1
 - **前端**: Vue.js 3.4.0, Vite 5.0.0, @vitejs/plugin-vue 5.0.0, Vue Router 4.2.0, Pinia 2.1.0, Axios 1.6.0, ESLint 8.45.0, eslint-plugin-vue 9.15.0, Vitest 0.34.6, @vitest/ui 0.34.7, jsdom 22.1.0
 - **测试**: Django TestCase, REST Framework APITestCase, Vitest, jsdom 22.1.0
 - **通信**: RESTful API, CORS, JWT认证
@@ -43,7 +43,8 @@ D:\dev\blog\
 │   │   ├───0012_tag_article_tags.py
 │   │   ├───0013_captcha.py
 │   │   ├───0014_remove_article_summary.py
-│   │   └───0015_category_tag.py
+│   │   ├───0015_category_tag.py
+│   │   └───0016_alter_captcha_created_at.py
 │   ├───models.py         # 数据模型
 │   ├───permissions.py    # 权限和认证类
 │   ├───serializers.py    # API序列化器
@@ -93,6 +94,7 @@ D:\dev\blog\
 │       └───views\         # 页面组件
 │           ├───CreatePost.vue
 │           ├───EditPost.vue # 文章编辑页面
+│           ├───ForgotPassword.vue # 忘记密码页面
 │           ├───Home.vue
 │           ├───Login.vue
 │           ├───NotFound.vue
@@ -158,6 +160,24 @@ D:\dev\blog\
    - 静态文件和媒体文件路径（STATIC_ROOT, MEDIA_ROOT）
    - 缓存配置（REDIS_URL）
    - 日志配置（LOG_LEVEL, LOG_FILE）
+
+### 前端环境变量配置
+前端支持开发和生产环境配置：
+- 开发环境：`frontend/.env.development`
+- 生产环境：`frontend/.env.production`
+
+配置示例：
+```bash
+# 开发环境
+VITE_APP_ENV=development
+VITE_API_BASE_URL=http://localhost:8000/api
+VITE_APP_TITLE=Vue+Django博客系统(开发版)
+
+# 生产环境
+VITE_APP_ENV=production
+VITE_API_BASE_URL=/api
+VITE_APP_TITLE=Vue+Django博客系统
+```
 
 ### 数据库配置
 项目使用MySQL 8.0数据库，确保已安装MySQL服务并创建`blog`数据库。
@@ -300,6 +320,14 @@ python test/run_tests.py --backend-only
 gunicorn -c gunicorn.conf.py blog.wsgi:application
 ```
 
+### Gunicorn配置详解
+项目包含完整的Gunicorn配置文件 `gunicorn.conf.py`，支持：
+- 自动检测CPU核心数并优化工作进程数量
+- 请求超时和保持连接设置
+- 详细的日志记录和错误处理
+- 进程监控和自动重启机制
+- 性能优化和安全配置
+
 ### 使用Supervisor管理进程
 ```bash
 # 安装supervisor
@@ -321,6 +349,7 @@ supervisorctl -c supervisor.conf status
 - `POST /api/auth/login/` - 用户登录
 - `POST /api/auth/register/` - 用户注册
 - `POST /api/captcha/` - 发送邮箱验证码
+- `POST /api/password/reset/` - 重置密码（通过邮箱验证码）
 - `POST /api/token/refresh/` - 刷新JWT令牌
 
 ### 文章相关（RESTful API）
@@ -346,9 +375,9 @@ supervisorctl -c supervisor.conf status
 - `DELETE /api/dislikes/<post_id>/` - 取消踩（需要认证）
 
 ### 用户资料相关
-- `GET /api/profile/me/` - 获取当前用户资料（需要认证）
-- `PUT /api/profile/me/` - 更新当前用户资料（需要认证）
-- `GET /api/profile/other/<user_id>/` - 获取指定用户资料和文章列表
+- `GET /api/users/profile/` - 获取当前用户资料（需要认证）
+- `PUT /api/users/profile/` - 更新当前用户资料（需要认证）
+- `GET /api/users/<user_id>/profile/` - 获取指定用户资料和文章列表
 
 ## 数据模型
 
@@ -368,7 +397,7 @@ supervisorctl -c supervisor.conf status
 - `Comment` - 评论模型，包含文章、作者、内容和发布时间
 
 ### 验证相关
-- `Captcha` - 邮箱验证码模型，包含邮箱、验证码和创建时间
+- `Captcha` - 邮箱验证码模型，包含邮箱、验证码和创建时间（auto_now=True）
 
 ## 开发约定
 
@@ -405,18 +434,20 @@ supervisorctl -c supervisor.conf status
 - 分页设置：文章列表默认每页显示16条，用户文章列表支持分页
 - 请求拦截器：自动添加Token到请求头
 - 响应拦截器：统一处理错误状态码和Token自动刷新
-- 动态路由：使用动态导入实现路由懒加载（CreatePost.vue, EditPost.vue, UserProfile.vue）
+- 动态路由：使用动态导入实现路由懒加载（CreatePost.vue, EditPost.vue, UserProfile.vue, ForgotPassword.vue）
 - 页面标题：通过路由meta自动设置页面标题
 - 环境变量：支持开发和生产环境配置（`.env.development`和`.env.production`）
 - 构建优化：生产环境支持代码压缩、资源分离、Tree Shaking等优化
 - 测试框架：使用Vitest进行单元测试，支持测试UI和监视模式
 - 测试环境：使用jsdom模拟浏览器环境进行测试
 - 别名配置：使用`@`别名指向`src`目录，简化导入路径
-- 路由配置：包含首页、文章列表、文章详情、登录注册、个人中心、用户详情等完整路由
+- 路由配置：包含首页、文章列表、文章详情、登录注册、个人中心、用户详情、忘记密码等完整路由
 - **Vite配置**：支持代码分割、懒加载、资源优化和测试集成
 - **构建目标**：ES2015，支持现代浏览器
 - **资源管理**：自动分割CSS和JavaScript资源
 - **API环境配置**：支持通过VITE_API_BASE_URL环境变量配置API基础URL
+- **代码分割**：自动分割Vue相关库和第三方依赖，优化加载性能
+- **资源优化**：支持压缩、去重和Tree Shaking，减小打包体积
 
 ### 测试约定
 - 后端测试：使用Django TestCase和REST Framework APITestCase
@@ -430,6 +461,12 @@ supervisorctl -c supervisor.conf status
 - 测试文档：完整的测试指南和最佳实践文档（test/TESTING.md）
 - 测试脚本：包含API测试、评论测试、分类检查等多种专项测试脚本
 - 测试目录：所有测试脚本位于 `test/` 目录下
+- **测试运行器**：`test/run_tests.py` 提供统一的测试运行和报告生成功能
+- **测试报告**：自动生成可视化HTML报告和JSON格式报告，包含测试统计和图表
+- **测试环境隔离**：前端和后端测试环境完全独立，确保测试结果准确性
+- **测试超时机制**：为不同类型的测试设置合理的超时时间，防止测试卡死
+- **测试结果分析**：提供详细的测试失败原因分析和错误输出
+- **性能测试指标**：包含响应时间、成功率、每秒请求数(RPS)等关键性能指标
 
 ### 安全注意事项
 - 生产环境需要更改`SECRET_KEY`
@@ -456,6 +493,7 @@ supervisorctl -c supervisor.conf status
 - Django REST framework API
 - 用户认证系统（注册、登录、资料管理）
 - 邮箱验证码功能
+- 忘记密码功能
 - 文章CRUD功能
 - 文章分类系统
 - 文章标签系统
@@ -483,7 +521,7 @@ supervisorctl -c supervisor.conf status
 
 ### 前端功能
 - Vue.js 3.4.0 + Composition API
-- 完整的路由系统（首页、文章列表、文章详情、登录、注册、个人中心、文章编辑、用户详情）
+- 完整的路由系统（首页、文章列表、文章详情、登录、注册、个人中心、文章编辑、用户详情、忘记密码）
 - 用户认证状态管理（Pinia）
 - API服务封装
 - 响应式设计
@@ -510,6 +548,7 @@ supervisorctl -c supervisor.conf status
 - **测试集成**：Vitest测试框架，支持UI测试和监视模式
 - **开发体验**：热重载、代码检查、自动化测试
 - **分页功能**：用户文章列表和个人中心支持分页显示
+- **忘记密码功能**：完整的忘记密码流程，包含邮箱验证码验证
 
 ### 已实现的新功能
 1. 文章标签系统 - 完整的标签模型和管理功能，支持多标签关联
@@ -552,6 +591,8 @@ supervisorctl -c supervisor.conf status
 38. **API端点优化** - 完整的RESTful API设计，支持文章删除功能
 39. **分页功能增强** - 用户文章列表和个人中心支持分页显示，提升用户体验
 40. **API环境配置** - 前端支持通过环境变量配置API基础URL，提高部署灵活性
+41. **忘记密码功能** - 完整的忘记密码流程，包含邮箱验证码验证和密码重置
+42. **验证码模型优化** - 更新验证码模型的created_at字段为auto_now=True，确保时间戳准确性
 
 ### 项目特色亮点
 - **现代化架构**：采用Vue 3 Composition API和Django 5.2.8最新技术栈
@@ -564,6 +605,11 @@ supervisorctl -c supervisor.conf status
 - **前端优化**：Vite构建优化，支持代码分割和懒加载
 - **测试自动化**：完整的测试运行器，支持多种测试类型和报告生成
 - **用户体验**：分页功能、响应式设计和流畅的交互体验
+- **密码管理**：完整的忘记密码和重置密码功能，提升用户账户安全性
+- **环境配置**：完整的环境变量管理，支持开发和生产环境无缝切换
+- **部署优化**：详细的Gunicorn配置和Supervisor进程管理，支持生产环境部署
+- **测试报告**：可视化HTML测试报告，包含图表和进度条，便于测试结果分析
+- **性能监控**：压力测试和负载测试工具，评估系统性能和稳定性
 
 ### 下一步开发建议
 1. 实现用户权限管理（管理员/普通用户）
