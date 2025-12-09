@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
-from .models import Comment
+from .models import Comment, Article
 from .serializers import CommentSerializer
 
 
@@ -13,6 +13,7 @@ class Comments(APIView):
     def get(self, request, article_id):
         comments = Comment.objects.filter(article_id=article_id)
         comment_dict = [{
+            'id': comment.id,
             'author_id': comment.author.id,
             'author': comment.author.username,
             'pub_time': comment.pub_time.isoformat(),
@@ -42,3 +43,22 @@ class Comments(APIView):
         return Response({
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+
+    @permission_classes([IsAuthenticated])
+    def delete(self, request, article_id, comment_id):
+        try:
+            comment = Comment.objects.get(article_id=article_id, id=comment_id)
+        except Comment.DoesNotExist:
+            return Response({
+                'errors':'评论不存在'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user != comment.author:
+            return Response({
+                'errors':'你无权限删除评论'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        comment.delete()
+        return Response({
+            'success': True
+        }, status=status.HTTP_200_OK)

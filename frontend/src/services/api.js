@@ -219,8 +219,8 @@ export const apiService = {
     return api.post(`/articles/${postId}/comments/`, data)
   },
   
-  deleteComment(commentId) {
-    return api.delete(`/comments/${commentId}/`)
+  deleteComment(articleId, commentId) {
+    return api.delete(`/articles/${articleId}/comments/${commentId}/`)
   },
   
   // 点赞相关API - RESTful版本

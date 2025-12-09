@@ -7,49 +7,49 @@ from rest_framework.views import APIView
 
 class Likes(APIView):
     @permission_classes([IsAuthenticated])
-    def post(self, request, post_id):
+    def post(self, request, article_id):
         try:
-            post = Article.objects.get(id=post_id)
+            article = Article.objects.get(id=article_id)
         except Article.DoesNotExist:
             return Response({'error': '文章不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-        post.like_count += 1
-        post.save()
-        Like.objects.create(article_id=post.id, user_id=request.user.id)
-        return Response({'likes': post.like_count}, status=status.HTTP_201_CREATED)
+        article.like_count += 1
+        article.save()
+        Like.objects.create(article_id=article_id, user_id=request.user.id)
+        return Response({'likes': article.like_count}, status=status.HTTP_201_CREATED)
 
     @permission_classes([IsAuthenticated])
-    def delete(self, request, post_id):
+    def delete(self, request, article_id):
         try:
-            post = Article.objects.get(id=post_id)
+            article = Article.objects.get(id=article_id)
         except Article.DoesNotExist:
             return Response({'error': '文章不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-        post.like_count -= 1
-        post.save()
-        Like.objects.filter(article_id=post.id, user_id=request.user.id).delete()
-        return Response({'likes': post.like_count}, status=status.HTTP_201_CREATED)
+        article.like_count -= 1
+        article.save()
+        Like.objects.filter(article_id=article_id, user_id=request.user.id).delete()
+        return Response({'likes': article.like_count}, status=status.HTTP_201_CREATED)
 
 class Dislikes(APIView):
     @permission_classes([IsAuthenticated])
-    def post(self, request, post_id):
+    def post(self, request, article_id):
         try:
-            post = Article.objects.get(id=post_id)
+            article = Article.objects.get(id=article_id)
         except Article.DoesNotExist:
             return Response({'error': '文章不存在'}, status=status.HTTP_404_NOT_FOUND)
-        post.dislike_count += 1
-        post.save()
-        Dislike.objects.create(article_id=post.id, user_id=request.user.id)
-        return Response({'dislikes': post.dislike_count}, status=status.HTTP_201_CREATED)
+        article.dislike_count += 1
+        article.save()
+        Dislike.objects.create(article_id=article_id, user_id=request.user.id)
+        return Response({'dislikes': article.dislike_count}, status=status.HTTP_201_CREATED)
 
     @permission_classes([IsAuthenticated])
-    def delete(self, request, post_id):
+    def delete(self, request, article_id):
         try:
-            post = Article.objects.get(id=post_id)
+            article = Article.objects.get(id=article_id)
         except Article.DoesNotExist:
             return Response({'error': '文章不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-        post.dislike_count -= 1
-        post.save()
-        Dislike.objects.filter(article_id=post.id, user_id=request.user.id).delete()
-        return Response({'dislikes':post.dislike_count}, status=status.HTTP_201_CREATED)
+        article.dislike_count -= 1
+        article.save()
+        Dislike.objects.filter(article_id=article_id, user_id=request.user.id).delete()
+        return Response({'dislikes':article.dislike_count}, status=status.HTTP_201_CREATED)

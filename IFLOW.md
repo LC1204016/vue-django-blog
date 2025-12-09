@@ -5,7 +5,7 @@
 这是一个基于Vue.js 3和Django 5.2.8的现代化前后端分离博客项目。后端使用Django REST framework提供高性能API，前端使用Vue.js 3 + Vite + Pinia构建响应式用户界面，实现了完整的用户认证系统、文章发布编辑、评论互动、点赞功能和文章标签系统。项目支持用户资料展示、文章作者详情查看、文章搜索、忘记密码等社交功能。已配置JWT认证系统、环境变量管理、Redis缓存、完整测试框架和阿里云部署指南。
 
 ### 技术栈
-- **后端**: Python 3.12, Django 5.2.8, Django REST framework 3.16.1, Django REST framework SimpleJWT 5.5.1, MySQL 8.0, django-cors-headers 4.9.0, Pillow 12.0.0, python-dotenv 1.0.1, gunicorn 23.0.0, aiohttp 3.13.2, asyncio 4.0.0, mysqlclient 2.2.7, PyJWT 2.10.1
+- **后端**: Python 3.12, Django 5.2.8, Django REST framework 3.16.1, Django REST framework SimpleJWT 5.5.1, MySQL 8.0, django-cors-headers 4.9.0, Pillow 12.0.0, python-dotenv 1.0.1, gunicorn 23.0.0, aiohttp 3.13.2, asyncio 4.0.0, mysqlclient 2.2.7, PyJWT 2.10.1, asgiref 3.11.0, sqlparse 0.5.4, tzdata 2025.2
 - **前端**: Vue.js 3.4.0, Vite 5.0.0, @vitejs/plugin-vue 5.0.0, Vue Router 4.2.0, Pinia 2.1.0, Axios 1.6.0, ESLint 8.45.0, eslint-plugin-vue 9.15.0, Vitest 0.34.6, @vitest/ui 0.34.7, jsdom 22.1.0
 - **测试**: Django TestCase, REST Framework APITestCase, Vitest, jsdom 22.1.0
 - **通信**: RESTful API, CORS, JWT认证
@@ -240,6 +240,18 @@ npm run preview
 npm run lint
 ```
 
+#### 前端测试
+```bash
+# 运行测试
+npm run test
+
+# 运行测试并查看UI界面
+npm run test:ui
+
+# 运行测试并监视文件变化
+npm run test:watch
+```
+
 ## 测试
 
 ### 后端测试
@@ -448,6 +460,9 @@ supervisorctl -c supervisor.conf status
 - **API环境配置**：支持通过VITE_API_BASE_URL环境变量配置API基础URL
 - **代码分割**：自动分割Vue相关库和第三方依赖，优化加载性能
 - **资源优化**：支持压缩、去重和Tree Shaking，减小打包体积
+- **测试配置**：完整的Vitest测试环境配置，包含全局测试设置和Mock对象
+- **构建优化**：Terser压缩、控制台日志移除、Source Map控制等生产优化
+- **依赖优化**：自动检测和优化依赖，包含Vitest集成配置
 
 ### 测试约定
 - 后端测试：使用Django TestCase和REST Framework APITestCase
@@ -467,6 +482,10 @@ supervisorctl -c supervisor.conf status
 - **测试超时机制**：为不同类型的测试设置合理的超时时间，防止测试卡死
 - **测试结果分析**：提供详细的测试失败原因分析和错误输出
 - **性能测试指标**：包含响应时间、成功率、每秒请求数(RPS)等关键性能指标
+- **前端测试配置**：完整的Vitest测试环境设置，包含localStorage/sessionStorage Mock和TextEncoder兼容性处理
+- **后端测试框架**：模块化测试类设计，包含认证、文章、评论、互动、用户资料、边界条件和错误处理测试
+- **测试基类**：提供通用测试工具和方法，简化测试用例编写
+- **测试数据管理**：自动化测试数据创建和清理，确保测试环境一致性
 
 ### 安全注意事项
 - 生产环境需要更改`SECRET_KEY`
@@ -610,6 +629,9 @@ supervisorctl -c supervisor.conf status
 - **部署优化**：详细的Gunicorn配置和Supervisor进程管理，支持生产环境部署
 - **测试报告**：可视化HTML测试报告，包含图表和进度条，便于测试结果分析
 - **性能监控**：压力测试和负载测试工具，评估系统性能和稳定性
+- **测试框架升级**：模块化测试基类设计，支持边界条件和错误处理测试
+- **构建优化增强**：Terser压缩、依赖优化、Source Map控制等生产环境优化
+- **依赖管理**：精确的版本控制，包含asgiref、sqlparse、tzdata等核心依赖
 
 ### 下一步开发建议
 1. 实现用户权限管理（管理员/普通用户）

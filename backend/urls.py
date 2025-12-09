@@ -18,10 +18,11 @@ urlpatterns = [
     
     # 评论相关
     path('articles/<int:article_id>/comments/', views.Comments.as_view(), name='Comments'),
+    path('articles/<int:article_id>/comments/<int:comment_id>/', views.Comments.as_view(), name='Comments'),
 
     # 互动功能
-    path('likes/<int:post_id>/', views.Likes.as_view(), name='likes'),
-    path('dislikes/<int:post_id>/', views.Dislikes.as_view(), name='dislikes'),
+    path('articles/<int:article_id>/likes/', views.Likes.as_view(), name='likes'),
+    path('articles/<int:article_id>/dislikes/', views.Dislikes.as_view(), name='dislikes'),
     
     # 用户资料相关
     path('users/profile/', views.UserProfilesView.as_view(), name='my-profile'),
